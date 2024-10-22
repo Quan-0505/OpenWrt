@@ -40,6 +40,7 @@ CONFIG_PACKAGE_kmod-lib-zstd=y
 ### AGGRESSIVE ###
 CONFIG_USE_GC_SECTIONS=y
 CONFIG_USE_LTO=y
+CONFIG_USE_MOLD=y
 
 # RNGD
 # CONFIG_PACKAGE_urandom-seed is not set
@@ -140,6 +141,7 @@ CONFIG_PACKAGE_coremark=y
 CONFIG_PACKAGE_htop=y
 CONFIG_PACKAGE_subconverter=y
 CONFIG_PACKAGE_kmod-shortcut-fe-cm=y
+CONFIG_PACKAGE_kmod-fast-classifier=y
 # CONFIG_PACKAGE_natflow-boot=y
 CONFIG_PACKAGE_luci-app-mihomo=y
 
