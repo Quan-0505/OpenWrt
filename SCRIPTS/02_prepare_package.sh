@@ -76,7 +76,7 @@ mkdir -p package/network/utils/nftables/patches
 cp -f ../PATCH/pkgs/firewall/nftables/*.patch ./package/network/utils/nftables/patches/
 # Patch LuCI 以增添 FullCone 开关
 pushd feeds/luci
-patch -p1 <../../../PATCH/pkgs/firewall/01-luci-app-firewall_add_nft-fullcone-bcm-fullcone_option.patch
+patch -p1 <../../../PATCH/pkgs/firewall/luci/0001-luci-app-firewall-add-nft-fullcone-and-bcm-fullcone-.patch
 popd
 
 ### Shortcut-FE 部分 ###
@@ -84,18 +84,25 @@ popd
 cp -rf ../PATCH/kernel/sfe/* ./target/linux/generic/hack-6.6/
 cp -rf ../lede/target/linux/generic/pending-6.6/613-netfilter_optional_tcp_window_check.patch ./target/linux/generic/pending-6.6/613-netfilter_optional_tcp_window_check.patch
 # Patch LuCI 以增添 Shortcut-FE 开关
-patch -p1 < ../PATCH/pkgs/firewall/luci-app-firewall_add_sfe_switch.patch
-# natflow
-# patch -p1 < ../PATCH/pkgs/firewall/luci-app-firewall_add_natflow_switch.patch
+pushd feeds/luci
+patch -p1 <../../../PATCH/pkgs/firewall/luci/0002-luci-app-firewall-add-shortcut-fe-option.patch
+popd
 
 ### NAT6 部分 ###
 # custom nft command
 patch -p1 < ../PATCH/pkgs/firewall/100-openwrt-firewall4-add-custom-nft-command-support.patch
 # Patch LuCI 以增添 NAT6 开关
 pushd feeds/luci
-patch -p1 <../../../PATCH/pkgs/firewall/03-luci-app-firewall_add_ipv6-nat.patch
+patch -p1 <../../../PATCH/pkgs/firewall/luci/0003-luci-app-firewall-add-ipv6-nat-option.patch
+popd
 # Patch LuCI 以支持自定义 nft 规则
-patch -p1 <../../../PATCH/pkgs/firewall/04-luci-add-firewall4-nft-rules-file.patch
+pushd feeds/luci
+patch -p1 <../../../PATCH/pkgs/firewall/luci/0004-luci-add-firewall-add-custom-nft-rule-support.patch
+popd
+
+### natflow 部分 ###
+pushd feeds/luci
+patch -p1 <../../../PATCH/pkgs/firewall/luci/0005-luci-app-firewall-add-natflow-offload-support.patch
 popd
 
 ### Other Kernel Hack 部分 ###
