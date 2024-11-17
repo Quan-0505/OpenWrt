@@ -100,6 +100,7 @@ jobs:
       continue-on-error: true
       run: |
         #echo | make kernel_oldconfig -j$(($(nproc) + 1)) 
+        make -j$(($(nproc) + 1)) package/network/utils/nftables/refresh V=s
         IGNORE_ERRORS=1 make -j$(($(nproc) + 1))
         echo $?
     - name: If Error
