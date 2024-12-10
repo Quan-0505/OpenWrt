@@ -17,6 +17,9 @@ echo '
 CONFIG_CPU_FREQ_DEFAULT_GOV_POWERSAVE=y
 ' >>./target/linux/rockchip/armv8/config-6.6
 
+# remove LRNG for 3328
+rm -f target/linux/generic/hack-6.6/696*
+
 #Vermagic
 latest_version="$(curl -s https://github.com/openwrt/openwrt/tags | grep -Eo "v[0-9\.]+\-*r*c*[0-9]*.tar.gz" | sed -n '/[2-9][4-9]/p' | sed -n 1p | sed 's/v//g' | sed 's/.tar.gz//g')"
 wget https://downloads.openwrt.org/releases/${latest_version}/targets/rockchip/armv8/profiles.json
