@@ -14,22 +14,22 @@ index e0a326d4fcf4..f6b518437aa9 100644
 --- a/applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
 +++ b/applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
 @@ -178,6 +178,9 @@ return view.extend({
- 		o.datatype    = 'port'
- 		o.placeholder = '0-65535'
+ 		o = s.taboption('advanced', form.Value, 'upnp_lease_file', _('Service lease file'));
+ 		o.placeholder = '/var/run/miniupnpd.leases';
  
 +		s.taboption('advanced', form.Flag, 'force_forwarding', _('Force Forwarding'),
 +			_('Force forwarding even there is no public IP (please try STUN first)'))
 +
- 		s = m.section(form.GridSection, 'perm_rule', _('Service ACLs'),
- 			_('ACLs specify which external ports can be forwarded to which client addresses and ports, IPv6 always allowed.'))
+ 		s = m.section(form.GridSection, 'perm_rule', _('Service Access Control List'),
+ 			_('ACL specify which client addresses and ports can be mapped, IPv6 always allowed.'));
  
 diff --git a/applications/luci-app-upnp/po/templates/upnp.pot b/applications/luci-app-upnp/po/templates/upnp.pot
 index 1728a18d1a50..1bb30e2ba905 100644
 --- a/applications/luci-app-upnp/po/templates/upnp.pot
 +++ b/applications/luci-app-upnp/po/templates/upnp.pot
 @@ -214,3 +214,9 @@ msgstr ""
- #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:140
- msgid "Value in KByte/s, informational only"
+ msgctxt "Use %s (%s = STUN)"
+ msgid "Use %s"
  msgstr ""
 +
 +msgid "Force Forwarding"
@@ -42,9 +42,9 @@ index 58b96270024d..9a31b0a881c9 100644
 --- a/applications/luci-app-upnp/po/zh_Hans/upnp.po
 +++ b/applications/luci-app-upnp/po/zh_Hans/upnp.po
 @@ -230,3 +230,9 @@ msgstr "使用 STUN"
- #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:140
- msgid "Value in KByte/s, informational only"
- msgstr "单位为 KByte/s，仅供参考"
+ msgctxt "Use %s (%s = STUN)"
+ msgid "Use %s"
+ msgstr "使用 %s"
 +
 +msgid "Force Forwarding"
 +msgstr "强制转发"
