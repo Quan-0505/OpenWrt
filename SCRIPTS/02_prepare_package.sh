@@ -110,6 +110,11 @@ pushd feeds/luci
 patch -p1 <../../../PATCH/pkgs/firewall/luci/0005-luci-app-firewall-add-natflow-offload-support.patch
 popd
 
+### fullcone6 ###
+pushd feeds/luci
+patch -p1 <../../../PATCH/pkgs/firewall/luci/0007-luci-app-firewall-add-fullcone6-option-for-nftables-.patch
+popd
+
 ### Other Kernel Hack 部分 ###
 # make olddefconfig
 wget -qO - https://github.com/openwrt/openwrt/commit/c21a3570.patch | patch -p1
