@@ -64,6 +64,8 @@ CONFIG_LRNG_SELFTEST=y
 cp -rf ../PATCH/kernel/wg/* ./target/linux/generic/hack-6.6/
 # dont wrongly interpret first-time data
 echo "net.netfilter.nf_conntrack_tcp_max_retrans=5" >>./package/kernel/linux/files/sysctl-nf-conntrack.conf
+# OTHERS
+cp -rf ../PATCH/kernel/others/* ./target/linux/generic/pending-6.6/
 
 ### Fullcone-NAT 部分 ###
 # bcmfullcone
