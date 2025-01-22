@@ -37,9 +37,6 @@ rm -rf ./package/network/config/firewall4
 cp -rf ../openwrt_ma/package/network/config/firewall4 ./package/network/config/firewall4
 
 ### 必要的 Patches ###
-# PPPOE
-#wget https://github.com/torvalds/linux/commit/87b3593.patch -O target/linux/generic/backport-6.6/999-6.9-01-87b3593.patch
-wget https://github.com/torvalds/linux/commit/6db5dc7.patch -O target/linux/generic/backport-6.6/999-6.9-02-6db5dc7.patch
 # TCP optimizations
 cp -rf ../PATCH/kernel/6.7_Boost_For_Single_TCP_Flow/* ./target/linux/generic/backport-6.6/
 cp -rf ../PATCH/kernel/6.8_Boost_TCP_Performance_For_Many_Concurrent_Connections-bp_but_put_in_hack/* ./target/linux/generic/hack-6.6/
