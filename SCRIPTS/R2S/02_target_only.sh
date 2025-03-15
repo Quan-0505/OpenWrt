@@ -23,4 +23,16 @@ cp -rf ../PATCH/files ./files
 find ./ -name *.orig | xargs rm -f
 find ./ -name *.rej | xargs rm -f
 
+# 使用 LZ4HC 压缩算法，优化设备性能
+# 也支持CONFIG_SQUASHFS_ZSTD=y
+if patch -p1 < ../PATCH/squashfs4_add_zstd_lz4_support.patch; then
+  rm -rf ./tools/squashfs4/patches/
+  echo '
+CONFIG_SQUASHFS_XZ=n
+CONFIG_SQUASHFS_LZ4=y
+CONFIG_LZ4_DECOMPRESS=y
+' | tee -a ./target/linux/generic/config-6.6 ./target/linux/rockchip/armv8/config-6.6 > /dev/null
+else
+  echo "squashfs 补丁应用失败，跳过"
+fi
 #exit 0
