@@ -66,6 +66,10 @@ cp -rf ../PATCH/kernel/wg/* ./target/linux/generic/hack-6.6/
 echo "net.netfilter.nf_conntrack_tcp_max_retrans=5" >>./package/kernel/linux/files/sysctl-nf-conntrack.conf
 # OTHERS
 cp -rf ../PATCH/kernel/others/* ./target/linux/generic/pending-6.6/
+# 6.17_ppp_performance
+wget https://github.com/torvalds/linux/commit/95d0d09.patch -O target/linux/generic/pending-6.6/999-1-95d0d09.patch
+wget https://github.com/torvalds/linux/commit/1a3e9b7.patch -O target/linux/generic/pending-6.6/999-2-1a3e9b7.patch
+wget https://github.com/torvalds/linux/commit/7eebd21.patch -O target/linux/generic/pending-6.6/999-3-7eebd21.patch
 # ppp_fix
 wget -qO - https://github.com/immortalwrt/immortalwrt/commit/9d852a0.patch | patch -p1
 
@@ -77,7 +81,7 @@ wget -qO - https://github.com/openwrt/openwrt/commit/bbf39d07.patch | patch -p1
 echo "net.netfilter.nf_conntrack_helper = 1" >>./package/kernel/linux/files/sysctl-nf-conntrack.conf
 # FW4
 mkdir -p package/network/config/firewall4/patches
-cp -f ../PATCH/pkgs/firewall/firewall4_patches/*.patch ./package/network/config/firewall4/patches/
+#cp -f ../PATCH/pkgs/firewall/firewall4_patches/*.patch ./package/network/config/firewall4/patches/
 mkdir -p package/libs/libnftnl/patches
 cp -f ../PATCH/pkgs/firewall/libnftnl/*.patch ./package/libs/libnftnl/patches/
 sed -i '/PKG_INSTALL:=/iPKG_FIXUP:=autoreconf' package/libs/libnftnl/Makefile
@@ -100,6 +104,7 @@ popd
 ### NAT6 部分 ###
 # custom nft command
 patch -p1 < ../PATCH/pkgs/firewall/100-openwrt-firewall4-add-custom-nft-command-support.patch
+cp -f ../PATCH/pkgs/firewall/firewall4_patches/*.patch ./package/network/config/firewall4/patches/
 # Patch LuCI 以增添 NAT6 开关
 pushd feeds/luci
 patch -p1 <../../../PATCH/pkgs/firewall/luci/0003-luci-app-firewall-add-ipv6-nat-option.patch
