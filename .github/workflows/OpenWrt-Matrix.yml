@@ -99,7 +99,7 @@ jobs:
           echo "matrix.arch: '${{ matrix.arch }}'"
           echo "matrix.arch_suffix: '${{ matrix.arch_suffix }}'"
           echo "github.run_id: '${{ github.run_id }}'"
-          
+
           # Platform name in lowercase
           name_lower=$(echo "${{ matrix.name }}" | tr 'A-Z' 'a-z')
 
@@ -306,3 +306,12 @@ jobs:
 
       - name: Print Disk Space After
         run: df -h
+
+      - name: Trigger badge sync for current platform
+        if: github.workflow == 'OpenWrt-Matrix' && inputs.build_firmware && always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Triggering badge sync for ${{ matrix.name }} with status: ${{ steps.create_release.outcome }}"
+          gh workflow run "${{ matrix.name }}-OpenWrt.yml" \
+            --field badge_status="${{ steps.create_release.outcome }}" || echo "Failed to trigger ${{ matrix.name }} workflow"
