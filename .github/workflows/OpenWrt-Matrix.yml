@@ -127,7 +127,7 @@ jobs:
           workerid=${{ github.run_id }}
 
           # openwrt_source_name archive name
-          openwrt_source_name="openwrt-source-${{ matrix.name }}-${workerid}"
+          openwrt_source_name="openwrt-source-${{ matrix.name }}-${workerid}.tar"
 
           cat <<EOF | tee -a $GITHUB_ENV
           seed=$seed
@@ -226,18 +226,12 @@ jobs:
           latest_release="$(curl -s https://github.com/openwrt/openwrt/tags | grep -Eo "v[0-9\.]+\-*r*c*[0-9]*.tar.gz" | sed -n '/[2-9][4-9]/p' | sed -n 1p | sed 's/.tar.gz//g' | sed 's/v//g')"
           echo "latest_release=${latest_release}" >> $GITHUB_ENV
 
-      - name: Cache
-        uses: HiGarfield/cachewrtbuild@main
-        with:
-          mixkey: ${{ env.TARGET_DEVICE_ARCH }}
-          prefix: ${{ github.workspace }}/openwrt
-          skip_saving: ${{ !inputs.build_firmware }}
-
-      - name: Make Download
-        working-directory: ${{ github.workspace }}/openwrt
-        run: |
-          make download -j50
-          make -j$(($(nproc) + 1)) package/network/utils/nftables/refresh V=s
+          echo "Package folder ${{ env.openwrt_source_name }}"
+          cd ..
+          # Must use tar, otherwise symbolic links will be incomplete
+          if [ "${{ inputs.upload_source }}" = "true" ]; then
+            tar -cf ${{ env.openwrt_source_name }} openwrt
+          fi
 
       # upload_source
       - name: Upload Source Archive
@@ -246,13 +240,26 @@ jobs:
         with:
           name: ${{ env.openwrt_source_name }}
           path: |
-            openwrt/**
-            !openwrt/bin/**
-            !openwrt/build_dir/**
-            !openwrt/staging_dir/**
-            !openwrt/tmp/**
-            !openwrt/dl/**
-          retention-days: 7
+            ${{ env.openwrt_source_name }}
+          retention-days: 5
+
+      - name: Cache
+        if: inputs.build_firmware
+        uses: HiGarfield/cachewrtbuild@main
+        with:
+          mixkey: ${{ env.TARGET_DEVICE_ARCH }}
+          prefix: ${{ github.workspace }}/openwrt
+          skip_saving: ${{ !inputs.build_firmware }}
+
+      - name: Make Download
+        if: inputs.build_firmware
+        working-directory: ${{ github.workspace }}/openwrt
+        run: |
+          if [ "${{ inputs.upload_source }}" = "true" ] && [ -f ../${{ env.openwrt_source_name }} ]; then
+            rm ../${{ env.openwrt_source_name }}
+          fi
+          make download -j50
+          make -j$(($(nproc) + 1)) package/network/utils/nftables/refresh V=s
 
       # build_firmware
       - name: Compile Openwrt
@@ -308,7 +315,7 @@ jobs:
         run: df -h
 
       - name: Trigger badge sync for current platform
-        if: github.workflow == 'OpenWrt-Matrix' && inputs.build_firmware && always()
+        if: github.workflow == 'OpenWrt-Matrix' && inputs.build_firmware && steps.create_release.outcome != 'skipped' && always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
