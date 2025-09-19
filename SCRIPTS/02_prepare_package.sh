@@ -214,10 +214,10 @@ cp -rf ../docker_lib/collections/luci-lib-docker ./feeds/luci/collections/luci-l
 patch -p1 <../PATCH/pkgs/odhcp6c/1002-odhcp6c-support-dhcpv6-hotplug.patch
 # ODHCPD
 mkdir -p package/network/services/odhcpd/patches
-wget https://github.com/openwrt/odhcpd/pull/209.patch -O package/network/services/odhcpd/patches/209.patch
+cp -f ../PATCH/pkgs/odhcpd/001-odhcpd-improve-RFC-9096-compliance.patch ./package/network/services/odhcpd/patches/001-odhcpd-improve-RFC-9096-compliance.patch
+#wget https://github.com/openwrt/odhcpd/pull/211.patch -O package/network/services/odhcpd/patches/211.patch
 wget https://github.com/openwrt/odhcpd/pull/219.patch -O package/network/services/odhcpd/patches/219.patch
 wget https://github.com/openwrt/odhcpd/pull/242.patch -O package/network/services/odhcpd/patches/242.patch
-#wget https://github.com/openwrt/odhcpd/pull/245.patch -O package/network/services/odhcpd/patches/245.patch
 mkdir -p package/network/ipv6/odhcp6c/patches
 wget https://github.com/openwrt/odhcp6c/pull/75.patch -O package/network/ipv6/odhcp6c/patches/75.patch
 wget https://github.com/openwrt/odhcp6c/pull/80.patch -O package/network/ipv6/odhcp6c/patches/80.patch
