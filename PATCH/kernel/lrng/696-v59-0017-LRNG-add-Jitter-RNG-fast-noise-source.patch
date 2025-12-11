@@ -558,9 +558,9 @@ index 000000000000..4b6cd5d50218
 +	 * RBG2(NP) construction is attempted that intends to exclude the
 +	 * Jitter RNG).
 +	 */
-+	/* if (fips_enabled && CONFIG_LRNG_JENT_ENTROPY_RATE > 0 && */
-+	    /* jent_entropy == CONFIG_LRNG_JENT_ENTROPY_RATE) */
-+		/* jent_entropy = LRNG_DRNG_SECURITY_STRENGTH_BITS; */
++	if (fips_enabled && CONFIG_LRNG_JENT_ENTROPY_RATE > 0 &&
++	    jent_entropy == CONFIG_LRNG_JENT_ENTROPY_RATE)
++		jent_entropy = LRNG_DRNG_SECURITY_STRENGTH_BITS;
 +
 +	if (jent_entropy)
 +		lrng_force_fully_seeded();
