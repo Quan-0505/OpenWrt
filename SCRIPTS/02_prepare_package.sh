@@ -59,7 +59,7 @@ cp -rf ../PATCH/kernel/wg/* ./target/linux/generic/hack-6.12/
 # dont wrongly interpret first-time data
 echo "net.netfilter.nf_conntrack_tcp_max_retrans=5" >>./package/kernel/linux/files/sysctl-nf-conntrack.conf
 # OTHERS
-cp -rf ../PATCH/kernel/others/* ./target/linux/generic/pending-6.12/
+#cp -rf ../PATCH/kernel/others/* ./target/linux/generic/pending-6.12/
 
 ### Fullcone-NAT 部分 ###
 # bcmfullcone
@@ -145,7 +145,7 @@ cp -rf ../lede_pkg_ma/lang/golang ./feeds/packages/lang/golang
 wget https://github.com/rust-lang/rust/commit/e8d97f0.patch -O feeds/packages/lang/rust/patches/e8d97f0.patch
 # mount cgroupv2
 pushd feeds/packages
-patch -p1 <../../../PATCH/pkgs/cgroupfs-mount/0001-fix-cgroupfs-mount.patch
+#patch -p1 <../../../PATCH/pkgs/cgroupfs-mount/0001-fix-cgroupfs-mount.patch
 popd
 mkdir -p feeds/packages/utils/cgroupfs-mount/patches
 cp -rf ../PATCH/pkgs/cgroupfs-mount/900-mount-cgroup-v2-hierarchy-to-sys-fs-cgroup-cgroup2.patch ./feeds/packages/utils/cgroupfs-mount/patches/
@@ -194,14 +194,8 @@ patch -p1 <../PATCH/pkgs/odhcp6c/1002-odhcp6c-support-dhcpv6-hotplug.patch
 # ODHCPD
 rm -rf ./package/network/services/odhcpd
 cp -rf ../openwrt_ma/package/network/services/odhcpd ./package/network/services/odhcpd
-mkdir -p package/network/ipv6/odhcp6c/patches
-wget https://github.com/openwrt/odhcp6c/pull/75.patch -O package/network/ipv6/odhcp6c/patches/75.patch
-wget https://github.com/openwrt/odhcp6c/pull/80.patch -O package/network/ipv6/odhcp6c/patches/80.patch
-wget https://github.com/openwrt/odhcp6c/pull/82.patch -O package/network/ipv6/odhcp6c/patches/82.patch
-wget https://github.com/openwrt/odhcp6c/pull/83.patch -O package/network/ipv6/odhcp6c/patches/83.patch
-wget https://github.com/openwrt/odhcp6c/pull/84.patch -O package/network/ipv6/odhcp6c/patches/84.patch
-wget https://github.com/openwrt/odhcp6c/pull/90.patch -O package/network/ipv6/odhcp6c/patches/90.patch
-wget https://github.com/openwrt/odhcp6c/pull/98.patch -O package/network/ipv6/odhcp6c/patches/98.patch
+rm -rf ./package/network/ipv6/odhcp6c
+cp -rf ../openwrt_ma/package/network/ipv6/odhcp6c ./package/network/ipv6/odhcp6c
 # watchcat
 echo > ./feeds/packages/utils/watchcat/files/watchcat.config
 # 默认开启 Irqbalance
