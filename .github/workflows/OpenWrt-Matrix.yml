@@ -291,7 +291,7 @@ jobs:
           mv openwrt/bin/targets/${{ matrix.arch }}/${{ env.sysupgrade_glob }} ./artifact/ || true
           cd ./artifact/
           ls -Ahl
-          gzip -d *.gz && exit 0
+          gzip -d *.gz || true
           gzip --best *.img
           ls -Ahl
           sha256sum openwrt*${{ env.sha_match }}* | tee ${{ env.artifact_prefix }}-$(date +%Y-%m-%d)-${{ env.latest_release }}.sha256sum
