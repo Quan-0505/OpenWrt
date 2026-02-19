@@ -104,7 +104,7 @@
  		DEBUG_ERROR("Invalid input, Valid inout should be positive\n");
  		return -EINVAL;
  	}
-@@ -813,11 +813,11 @@ static const struct ctl_table ecm_classi
+@@ -813,11 +813,11 @@ static struct ctl_table ecm_classifier_d
  		.proc_handler	= &ecm_classifier_default_accel_mode_handler,
  	},
  	{
