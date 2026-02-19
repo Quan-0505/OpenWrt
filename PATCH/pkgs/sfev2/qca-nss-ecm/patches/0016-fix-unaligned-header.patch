@@ -77,10 +77,10 @@
  #include <linux/inet.h>
 --- a/ecm_db/ecm_db.c
 +++ b/ecm_db/ecm_db.c
-@@ -21,7 +21,7 @@
- #include <net/route.h>
- #include <net/ip.h>
+@@ -23,7 +23,7 @@
  #include <net/tcp.h>
+ #include <net/ip_fib.h>
+ #include <net/fib_notifier.h>
 -#include <asm/unaligned.h>
 +#include <linux/unaligned.h>
  #include <asm/uaccess.h>	/* for put_user */

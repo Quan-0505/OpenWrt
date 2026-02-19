@@ -99,7 +99,7 @@
  		.data		= &ecm_conntrack_notifier_stopped,
 --- a/ecm_db/ecm_db.c
 +++ b/ecm_db/ecm_db.c
-@@ -675,7 +675,7 @@ static int ecm_db_ipv6_route_handler(con
+@@ -673,7 +673,7 @@ static int ecm_db_ipv6_route_handler(con
  }
  #endif
  
@@ -121,7 +121,7 @@
  		.data		= &ecm_db_connection_defunct_5tuple,
 --- a/ecm_interface.c
 +++ b/ecm_interface.c
-@@ -9545,7 +9545,7 @@ static int ecm_interface_defunct_by_ifac
+@@ -9553,7 +9553,7 @@ static int ecm_interface_defunct_by_ifac
  	return ecm_interface_defunct_by_iface(write, buffer, lenp, ppos);
  }
  
@@ -302,7 +302,7 @@
  	{
  		.procname	= "sfe_fast_xmit_enable",
  		.data		= &ecm_sfe_fast_xmit_enable,
-@@ -537,7 +537,7 @@ static struct ctl_table ecm_sfe_sysctl_t
+@@ -536,7 +536,7 @@ static struct ctl_table ecm_sfe_sysctl_t
   */
  int ecm_sfe_sysctl_tbl_init(void)
  {
@@ -313,7 +313,7 @@
  		return -EINVAL;
 --- a/frontends/sfe/ecm_sfe_ipv4.c
 +++ b/frontends/sfe/ecm_sfe_ipv4.c
-@@ -1105,7 +1105,7 @@ static int ecm_sfe_ipv4_reject_accelerat
+@@ -1106,7 +1106,7 @@ static int ecm_sfe_ipv4_reject_accelerat
  }
  #endif
  
@@ -324,7 +324,7 @@
  		.data		= &ecm_sfe_ipv4_accel_limit_mode,
 --- a/frontends/sfe/ecm_sfe_ipv6.c
 +++ b/frontends/sfe/ecm_sfe_ipv6.c
-@@ -1104,7 +1104,7 @@ static int ecm_sfe_ipv6_reject_accelerat
+@@ -1105,7 +1105,7 @@ static int ecm_sfe_ipv6_reject_accelerat
  }
  #endif
  

@@ -90,10 +90,10 @@
  	 */
 -	current_val = ecm_classifier_accel_delay_pkts;
 +	current_val = ecm_classifier_accel_delay_pkts_v2;
- 	if (write) {
- 		int *valp = (int *)buffer;
- 		printk(KERN_ALERT "ECM DEBUG: accel_delay_pkts handler called. Write=1. Old=%d. User wants to write %d (from buffer?? proc_dointvec will parse it)\n", current_val, *valp); 
-@@ -797,8 +797,8 @@ static int ecm_classifier_accel_delay_pk
+ 	ret = proc_dointvec(ctl, write, buffer, lenp, ppos);
+ 	if (ret || (!write)) {
+ 		/*
+@@ -788,8 +788,8 @@ static int ecm_classifier_accel_delay_pk
  		return ret;
  	}
  
@@ -104,7 +104,7 @@
  		DEBUG_ERROR("Invalid input, Valid inout should be positive\n");
  		return -EINVAL;
  	}
-@@ -822,11 +822,11 @@ static const struct ctl_table ecm_classi
+@@ -813,11 +813,11 @@ static const struct ctl_table ecm_classi
  		.proc_handler	= &ecm_classifier_default_accel_mode_handler,
  	},
  	{
@@ -117,9 +117,9 @@
 -		.proc_handler	= &ecm_classifier_accel_delay_pkts_handler,
 +		.proc_handler	= &ecm_classifier_accel_delay_pkts_v2_handler,
  	},
- 	{ }
  };
-@@ -980,8 +980,8 @@ int ecm_classifier_default_init(struct d
+ 
+@@ -970,8 +970,8 @@ int ecm_classifier_default_init(struct d
  					(u32 *)&ecm_classifier_default_enabled);
  	ecm_debugfs_create_u32("accel_mode", S_IRUGO | S_IWUSR, ecm_classifier_default_dentry,
  					(u32 *)&ecm_classifier_default_accel_mode);
