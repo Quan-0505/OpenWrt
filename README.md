@@ -1,5 +1,5 @@
 <p align="center">
-<h1 align="center">YAOF（Quan-0505 精简定制版）</h1>
+<h1 align="center">OpenWrt（Quan-0505 精简定制版）</h1>
 <p align="center">
 <img src="https://github.com/Quan-0505/YAOF/workflows/R2S-OpenWrt/badge.svg">
 <img src="https://github.com/Quan-0505/YAOF/workflows/R3S-OpenWrt/badge.svg">
