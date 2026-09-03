@@ -19,21 +19,28 @@ CONFIG_TOOLCHAINOPTS=y
 ### ZLIB
 CONFIG_ZLIB_OPTIMIZE_SPEED=y
 
-# DAE
+### DAED 内核基础（eBPF/BTF）
 CONFIG_BPF_TOOLCHAIN_HOST=y
 CONFIG_PACKAGE_vmlinux-btf=y
 CONFIG_PACKAGE_kmod-xdp-sockets-diag=y
-CONFIG_PACKAGE_luci-app-dae=y
-CONFIG_PACKAGE_dae=y
-# CONFIG_DAE_USE_KERNEL_BTF is not set
-CONFIG_DAE_USE_VMLINUX_BTF=y
-CONFIG_PACKAGE_luci-app-honk=y
 
-# SAVING RAM FOR DAE
+# SAVING RAM (daed 内存缓冲)
 CONFIG_PACKAGE_zram-swap=y
 CONFIG_PACKAGE_kmod-lib-lz4=y
 CONFIG_PACKAGE_kmod-lib-lzo=y
 CONFIG_PACKAGE_kmod-lib-zstd=y
+
+### DAED ###
+# daed = dae + wing + 新版 Web UI（QiuSimons/luci-app-daed，kix 分支同步版）
+CONFIG_PACKAGE_daed=y
+CONFIG_PACKAGE_luci-app-daed=y
+# CONFIG_DAED_USE_KERNEL_BTF is not set
+CONFIG_DAED_USE_VMLINUX_BTF=y
+
+### KIXDNS ###
+# kixdns = Rust DNS 分流转发器 + LuCI（JohnsonRan/luci-app-kixdns，CI 预编译 musl 静态版）
+CONFIG_PACKAGE_kixdns=y
+CONFIG_PACKAGE_luci-app-kixdns=y
 
 ### AGGRESSIVE ###
 CONFIG_PACKAGE_luci-app-attendedsysupgrade=n
@@ -62,15 +69,6 @@ CONFIG_PACKAGE_kmod-ixgbevf=y
 CONFIG_PACKAGE_kmod-iavf=y
 CONFIG_PACKAGE_kmod-drm-i915=y
 CONFIG_PACKAGE_i915-firmware-dmc=y
-
-### DDNS ###
-CONFIG_PACKAGE_luci-app-ddns=y
-CONFIG_PACKAGE_ddns-scripts=y
-CONFIG_PACKAGE_ddns-scripts-cloudflare=y
-CONFIG_PACKAGE_ddns-scripts-dnspod=y
-CONFIG_PACKAGE_ddns-scripts-services=y
-CONFIG_PACKAGE_ddns-scripts-aliyun=y
-CONFIG_PACKAGE_bind-host=y
 
 ### 22.03 ###
 # CONFIG_PACKAGE_firewall is not set
@@ -105,63 +103,15 @@ CONFIG_PACKAGE_luci-nginx=y
 CONFIG_PACKAGE_luci-compat=y
 
 ### APPLICATION ###
-CONFIG_PACKAGE_luci-app-homeproxy=y
-CONFIG_PACKAGE_luci-app-ap-modem=y
-CONFIG_PACKAGE_luci-proto-wireguard=y
-CONFIG_PACKAGE_qrencode=y
-CONFIG_PACKAGE_luci-app-3cat=y
-CONFIG_PACKAGE_luci-app-aurora-config=y
-CONFIG_PACKAGE_luci-app-arpbind=y
-CONFIG_PACKAGE_luci-app-taskplan=y
-CONFIG_PACKAGE_luci-app-partexp=y
-CONFIG_PACKAGE_luci-app-airconnect=y
-CONFIG_PACKAGE_luci-app-mosdns=y
-CONFIG_PACKAGE_luci-app-cpufreq=y
-CONFIG_PACKAGE_luci-app-cpulimit=y
-CONFIG_PACKAGE_luci-app-frpc=y
-CONFIG_PACKAGE_frpc=y
-CONFIG_PACKAGE_luci-app-frps=y
-CONFIG_PACKAGE_frps=y
-CONFIG_PACKAGE_luci-app-openclash=y
-CONFIG_PACKAGE_luci-app-opkg=y
-CONFIG_PACKAGE_luci-app-ramfree=y
-CONFIG_PACKAGE_luci-app-wechatpush=y
-CONFIG_PACKAGE_luci-app-sqm=y
-CONFIG_PACKAGE_luci-app-vlmcsd=y
-CONFIG_PACKAGE_luci-app-unblockneteasemusic=y
-CONFIG_PACKAGE_luci-app-upnp=y
-CONFIG_PACKAGE_luci-app-usb-printer=y
-CONFIG_PACKAGE_luci-app-services-wolplus=y
-CONFIG_PACKAGE_luci-app-xlnetacc=y
-CONFIG_PACKAGE_luci-app-zerotier=y
-CONFIG_PACKAGE_luci-app-watchcat=y
-CONFIG_PACKAGE_luci-app-natmapt=y
-CONFIG_PACKAGE_stuntman-client=y
-CONFIG_PACKAGE_luci-app-oaf=y
-CONFIG_PACKAGE_zerotier=y
-CONFIG_PACKAGE_coremark=y
-CONFIG_PACKAGE_htop=y
 # CONFIG_PACKAGE_subconverter=y
 CONFIG_PACKAGE_kmod-shortcut-fe-cm=y
 CONFIG_PACKAGE_kmod-fast-classifier=y
 # CONFIG_PACKAGE_natflow-boot=y
-CONFIG_PACKAGE_luci-app-nikki=y
-CONFIG_PACKAGE_luci-app-filemanager=y
-CONFIG_PACKAGE_luci-app-einat=y
-CONFIG_PACKAGE_luci-app-bandix=y
-
-### SSRP ###
-CONFIG_PACKAGE_luci-app-ssr-plus=y
-
-### PASSWALL ###
-CONFIG_PACKAGE_luci-app-passwall=y
 
 ### THEME ###
-CONFIG_PACKAGE_luci-theme-aurora=y
 CONFIG_PACKAGE_luci-theme-bootstrap=y
 
 ### SHARE NETWORK ###
-CONFIG_PACKAGE_usbmuxd=y
 CONFIG_PACKAGE_kmod-usb-net-rndis=y
 CONFIG_PACKAGE_kmod-usb-net-ipheth=y
 

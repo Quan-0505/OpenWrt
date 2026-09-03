@@ -161,6 +161,10 @@ rm -rf feeds/luci/applications/{luci-app-frps,luci-app-frpc,luci-app-zerotier}
 rm -rf feeds/packages/utils/coremark
 sed -i 's/+@KERNEL_DEBUG_INFO_BTF/+vmlinux-btf/' ./package/new/openwrt-einat-ebpf/Makefile
 git clone https://github.com/QiuSimons/vmlinux-btf ./package/new/vmlinux-btf
+# KIXDNS feed（kixdns 核心 + LuCI 应用；预编译 musl 静态二进制由 workflow 下载到 kixdns/prebuilt/）
+git clone -q --depth 1 -b v1.5.3 https://github.com/JohnsonRan/luci-app-kixdns /tmp/luci-app-kixdns
+cp -rf /tmp/luci-app-kixdns/kixdns ./package/new/kixdns
+cp -rf /tmp/luci-app-kixdns/luci-app-kixdns ./package/new/luci-app-kixdns
 
 ### 获取额外的 LuCI 应用、主题和依赖 ###
 # RK
