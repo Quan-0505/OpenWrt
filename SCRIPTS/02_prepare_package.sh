@@ -165,6 +165,10 @@ git clone https://github.com/QiuSimons/vmlinux-btf ./package/new/vmlinux-btf
 git clone -q --depth 1 -b v1.5.3 https://github.com/JohnsonRan/luci-app-kixdns /tmp/luci-app-kixdns
 cp -rf /tmp/luci-app-kixdns/kixdns ./package/new/kixdns
 cp -rf /tmp/luci-app-kixdns/luci-app-kixdns ./package/new/luci-app-kixdns
+# DAED：预构建 web 前端 + 定制 Makefile（本 fork 内置 webdist，编译跳过 node/pnpm 环节）
+rm -rf ./package/new/luci-app-daed/daed/webrender-web-prebuilt
+cp -rf ../PATCH/daed/webdist ./package/new/luci-app-daed/daed/webrender-web-prebuilt
+cp -f ../PATCH/daed/daed.Makefile ./package/new/luci-app-daed/daed/Makefile
 
 ### 获取额外的 LuCI 应用、主题和依赖 ###
 # RK
