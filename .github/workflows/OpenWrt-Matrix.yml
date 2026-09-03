@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       targets:
-        description: "Select target platforms (comma separated, e.g. R2C,R2S,R3S,R4S,X86 ;leave blank for all, case-insensitive)"
+        description: "Select target platforms (comma separated, e.g. R2S,R3S,R4S,X86 ;leave blank for all, case-insensitive)"
         required: false
         type: string
         default: ""
@@ -45,7 +45,6 @@ jobs:
         run: |
           # All possible targets
           all_targets='[
-            {"name": "R2C", "script_dir": "R2S", "arch": "rockchip/armv8", "arch_suffix": "3328"},
             {"name": "R2S", "script_dir": "R2S", "arch": "rockchip/armv8", "arch_suffix": "3328"},
             {"name": "R3S", "script_dir": "R4S", "arch": "rockchip/armv8", "arch_suffix": "3566"},
             {"name": "R4S", "script_dir": "R4S", "arch": "rockchip/armv8", "arch_suffix": "3399"},
@@ -80,6 +79,7 @@ jobs:
       openwrt_source_name: dummy
       TARGET_DEVICE_ARCH: dummy
       latest_release: dummy
+      KIXDNS_RELEASE_TAG: dummy
 
     runs-on: ubuntu-24.04
     if: github.event.repository.owner.id == github.event.sender.id
@@ -107,7 +107,7 @@ jobs:
           seed="${{ matrix.name }}"
 
           # artifact_prefix rule
-          artifact_prefix="${{ matrix.name }}-GC404"
+          artifact_prefix="${{ matrix.name }}-OpenWrt"
 
           # sha_match rule
           sha_match="$name_lower"
@@ -129,6 +129,9 @@ jobs:
           # openwrt_source_name archive name
           openwrt_source_name="openwrt-source-${{ matrix.name }}-${workerid}.tar"
 
+          # kixdns prebuilt release tag (JohnsonRan/luci-app-kixdns)
+          kixdns_release_tag="v1.5.3"
+
           cat <<EOF | tee -a $GITHUB_ENV
           seed=$seed
           artifact_prefix=$artifact_prefix
@@ -137,6 +140,7 @@ jobs:
           sfs_zip=$sfs_zip
           sysupgrade_glob=$sysupgrade_glob
           openwrt_source_name=$openwrt_source_name
+          KIXDNS_RELEASE_TAG=$kixdns_release_tag
           EOF
 
       - name: Show system info
@@ -191,6 +195,27 @@ jobs:
           /bin/bash 02_prepare_package.sh
           /bin/bash 02_target_only.sh
           /bin/bash 04_remove_upx.sh
+
+      - name: Fetch KIXDNS prebuilt static binary
+        run: |
+          set -e
+          if [ "${{ matrix.arch }}" = "x86/64" ]; then A=x86_64; else A=aarch64_generic; fi
+          VER="${{ env.KIXDNS_RELEASE_TAG }}"
+          curl -sSL -o /tmp/kix.tgz "https://github.com/JohnsonRan/luci-app-kixdns/releases/download/${VER}/kixdns_${A}-openwrt-24.10.tar.gz"
+          mkdir -p /tmp/kix && tar -xzf /tmp/kix.tgz -C /tmp/kix
+          cd openwrt
+          python3 - <<'PYEOF'
+          import gzip, io, tarfile, glob, os
+          ipk = glob.glob('/tmp/kix/kixdns_*.ipk')[0]
+          outer = tarfile.open(fileobj=io.BytesIO(gzip.decompress(open(ipk, 'rb').read())), mode='r:')
+          data = outer.extractfile('./data.tar.gz').read()
+          tf = tarfile.open(fileobj=io.BytesIO(gzip.decompress(data)), mode='r:')
+          f = tf.extractfile('./usr/bin/kixdns')
+          os.makedirs('package/new/kixdns/prebuilt', exist_ok=True)
+          open('package/new/kixdns/prebuilt/kixdns', 'wb').write(f.read())
+          PYEOF
+          chmod +x package/new/kixdns/prebuilt/kixdns
+          ls -lh package/new/kixdns/prebuilt/kixdns
 
       - name: QTMDFW4
         working-directory: ${{ github.workspace }}/openwrt
@@ -315,12 +340,3 @@ jobs:
 
       - name: Print Disk Space After
         run: df -h
-
-      - name: Trigger badge sync for current platform
-        if: github.workflow == 'OpenWrt-Matrix' && inputs.build_firmware && steps.create_release.outcome != 'skipped' && always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Triggering badge sync for ${{ matrix.name }} with status: ${{ steps.create_release.outcome }}"
-          gh workflow run "${{ matrix.name }}-OpenWrt.yml" \
-            --field badge_status="${{ steps.create_release.outcome }}" || echo "Failed to trigger ${{ matrix.name }} workflow"
