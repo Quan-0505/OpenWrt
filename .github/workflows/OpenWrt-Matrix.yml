@@ -324,6 +324,13 @@ jobs:
           zip ${{ env.artifact_prefix }}-$(date +%Y-%m-%d)-${{ env.latest_release }}-sfs.zip ${{ env.sfs_zip }}
           ls -Ahl
 
+      - name: Upload firmware artifacts (safety net)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.artifact_prefix }}-firmware
+          path: ./artifact/*.zip
+          retention-days: 7
+
       - name: Create release
         if: inputs.build_firmware
         id: create_release
