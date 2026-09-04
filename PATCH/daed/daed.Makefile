@@ -115,7 +115,6 @@ define Build/Prepare
 			go mod tidy ; \
 			wget -qO default.pgo "https://github.com/QiuSimons/luci-app-dae/raw/refs/heads/kix/dae/pprof/default.pgo" ; \
 		popd ; \
-		# prebuilt web UI committed under PATCH/daed/webdist (offline build, no node toolchain needed)
 		mkdir -p $(PKG_BUILD_DIR)/webrender/web ; \
 		cp -rf $(CURDIR)/webrender-web-prebuilt/. $(PKG_BUILD_DIR)/webrender/web/ ; \
 	)
