@@ -270,13 +270,15 @@ jobs:
             ${{ env.openwrt_source_name }}
           retention-days: 5
 
-      - name: Cache
+      - name: Cache OpenWrt download sources (dl)
         if: inputs.build_firmware
-        uses: HiGarfield/cachewrtbuild@main
+        uses: actions/cache@v4
         with:
-          mixkey: ${{ env.TARGET_DEVICE_ARCH }}
-          prefix: ${{ github.workspace }}/openwrt
-          skip_saving: ${{ !inputs.build_firmware }}
+          path: openwrt/dl
+          key: yaof-dl-${{ env.latest_release }}-${{ env.TARGET_DEVICE_ARCH }}
+          restore-keys: |
+            yaof-dl-${{ env.latest_release }}-
+            yaof-dl-
 
       - name: Make Download
         if: inputs.build_firmware
