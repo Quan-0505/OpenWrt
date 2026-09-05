@@ -37,7 +37,7 @@ on:
 
 jobs:
   setup:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     if: github.event.repository.owner.id == github.event.sender.id
     steps:
       - id: set-matrix
@@ -81,7 +81,9 @@ jobs:
       latest_release: dummy
       KIXDNS_RELEASE_TAG: dummy
 
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
+    container:
+      image: ow-build:debian13
     if: github.event.repository.owner.id == github.event.sender.id
     strategy:
       fail-fast: false
@@ -149,7 +151,7 @@ jobs:
           cat /proc/cpuinfo | grep 'model name'
 
       - name: Maximize build space
-        if: inputs.build_firmware
+        if: inputs.build_firmware && !contains(runner.labels, 'self-hosted')
         uses: smallprogram/maximize-build-space@master
         with:
           swap-size-mb: 1024
@@ -164,6 +166,7 @@ jobs:
         uses: actions/checkout@main
 
       - name: Init build dependencies
+        if: inputs.build_firmware && !contains(runner.labels, 'self-hosted')
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
@@ -183,7 +186,9 @@ jobs:
 
       - name: Prepare Mixedwrt
         run: |
-          sudo chown -R runner:runner "${{ github.workspace }}"
+          OWNER=runner
+          if echo "${{ runner.labels }}" | grep -q self-hosted; then OWNER=root; fi
+          sudo chown -R "$OWNER:$OWNER" "${{ github.workspace }}" || true
           cp -r ./SCRIPTS/${{ matrix.script_dir }}/. ./SCRIPTS/
           cp -r ./SCRIPTS/. ./
           /bin/bash 01_get_ready.sh
@@ -325,8 +330,8 @@ jobs:
           if [ "${{ inputs.upload_source }}" = "true" ] && [ -f ../${{ env.openwrt_source_name }} ]; then
             rm ../${{ env.openwrt_source_name }}
           fi
-          make download -j50
-          make -j$(($(nproc) + 1)) package/network/utils/nftables/refresh V=s
+          make download -j$(( $(nproc) > 8 ? 8 : $(nproc) ))
+          make -j$(( $(nproc) > 8 ? 8 : $(nproc) )) package/network/utils/nftables/refresh V=s
 
       # build_firmware
       - name: Compile Openwrt
@@ -335,7 +340,7 @@ jobs:
         id: compileopenwrt
         continue-on-error: true
         run: |
-          IGNORE_ERRORS=1 make -j$(($(nproc) + 1))
+          IGNORE_ERRORS=1 make -j$(( $(nproc) > 8 ? 8 : $(nproc) ))
           echo $?
       - name: If Error
         if: steps.compileopenwrt.outcome == 'failure'
