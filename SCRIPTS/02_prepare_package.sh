@@ -165,6 +165,14 @@ git clone https://github.com/QiuSimons/vmlinux-btf ./package/new/vmlinux-btf
 git clone -q --depth 1 -b v1.5.3 https://github.com/JohnsonRan/luci-app-kixdns /tmp/luci-app-kixdns
 cp -rf /tmp/luci-app-kixdns/kixdns ./package/new/kixdns
 cp -rf /tmp/luci-app-kixdns/luci-app-kixdns ./package/new/luci-app-kixdns
+# LUCI 主题 footstrap（VizzleTF/luci-theme-footstrap，锁 commit）+ 自译中文语言包
+git clone -q --depth 1 https://github.com/VizzleTF/luci-theme-footstrap /tmp/luci-theme-footstrap
+git -C /tmp/luci-theme-footstrap fetch -q --depth 1 origin b84acecd09ba878035e79a64e2ec5c40725ee2f6
+git -C /tmp/luci-theme-footstrap checkout -q FETCH_HEAD
+rm -rf ./package/new/luci-theme-footstrap
+cp -rf /tmp/luci-theme-footstrap/luci-theme-footstrap ./package/new/luci-theme-footstrap
+mkdir -p ./package/new/luci-theme-footstrap/po/zh_Hans
+cp -f ../PATCH/theme-footstrap-zh/zh_Hans/footstrap.po ./package/new/luci-theme-footstrap/po/zh_Hans/footstrap.po
 # DAED（DaedNext Rust 内核 sticky 版）：整包替换 OpenWrt-Add 的 Go daed/luci-app-daed
 # 载荷由 workflow 从 Quan-0505/rust-daed v3.1.1-sticky 的 <设备>.apk 解包到 package/new/daed/prebuilt-data/
 rm -rf ./package/new/luci-app-daed

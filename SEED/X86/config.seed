@@ -110,6 +110,7 @@ CONFIG_PACKAGE_kmod-fast-classifier=y
 
 ### THEME ###
 CONFIG_PACKAGE_luci-theme-bootstrap=y
+CONFIG_PACKAGE_luci-theme-footstrap=y
 
 ### SHARE NETWORK ###
 CONFIG_PACKAGE_kmod-usb-net-rndis=y
