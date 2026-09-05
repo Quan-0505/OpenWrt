@@ -36,4 +36,12 @@ define Package/daed/install
 	$(CP) $(CURDIR)/prebuilt-data/. $(1)/
 endef
 
+# binary-only package: nothing to prepare, configure or compile
+define Build/Prepare
+endef
+define Build/Configure
+endef
+define Build/Compile
+endef
+
 $(eval $(call BuildPackage,daed))
