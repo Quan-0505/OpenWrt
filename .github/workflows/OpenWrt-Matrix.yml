@@ -162,9 +162,7 @@ jobs:
 
       - name: Prepare Mixedwrt
         run: |
-          OWNER=runner
-          if echo "${{ runner.labels }}" | grep -q self-hosted; then OWNER=root; fi
-          sudo chown -R "$OWNER:$OWNER" "${{ github.workspace }}" || true
+          sudo chown -R runner:runner "${{ github.workspace }}" || true
           cp -r ./SCRIPTS/${{ matrix.script_dir }}/. ./SCRIPTS/
           cp -r ./SCRIPTS/. ./
           /bin/bash 01_get_ready.sh
