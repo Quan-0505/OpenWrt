@@ -84,6 +84,7 @@ jobs:
     runs-on: self-hosted
     container:
       image: localhost:5000/ow-build:debian13
+      options: --volume /build/owcache:/owcache
     if: github.event.repository.owner.id == github.event.sender.id
     strategy:
       fail-fast: false
@@ -298,6 +299,25 @@ jobs:
             yaof-dl-${{ env.latest_release }}-
             yaof-dl-
 
+      - name: Restore persistent build cache (self-hosted /owcache)
+        if: inputs.build_firmware
+        run: |
+          KEY=${{ matrix.name }}
+          mkdir -p /owcache/"${KEY}" /owcache/dl
+          for d in build_dir staging_dir; do
+            if [ -d /owcache/"${KEY}/${d}" ]; then
+              echo "restoring ${d}"
+              mkdir -p "openwrt/${d}"
+              rsync -a /owcache/"${KEY}/${d}"/ "openwrt/${d}/" || true
+            fi
+          done
+          if [ -d /owcache/dl ] && [ "$(ls -A /owcache/dl | head -1)" ]; then
+            echo "restoring shared dl"
+            mkdir -p openwrt/dl
+            rsync -a /owcache/dl/ openwrt/dl/ || true
+          fi
+          du -sh openwrt/dl openwrt/build_dir openwrt/staging_dir 2>/dev/null || true
+
       - name: Make Download
         if: inputs.build_firmware
         working-directory: ${{ github.workspace }}/openwrt
@@ -343,6 +363,16 @@ jobs:
           zip ${{ env.artifact_prefix }}-$(date +%Y-%m-%d)-${{ env.latest_release }}-ext4.zip ${{ env.ext4_zip }}
           zip ${{ env.artifact_prefix }}-$(date +%Y-%m-%d)-${{ env.latest_release }}-sfs.zip ${{ env.sfs_zip }}
           ls -Ahl
+
+      - name: Save persistent build cache (self-hosted /owcache)
+        if: steps.organize.outcome == 'success'
+        run: |
+          KEY=${{ matrix.name }}
+          mkdir -p /owcache/"${KEY}" /owcache/dl
+          rsync -a openwrt/build_dir/ /owcache/"${KEY}"/build_dir/ || true
+          rsync -a openwrt/staging_dir/ /owcache/"${KEY}"/staging_dir/ || true
+          rsync -a openwrt/dl/ /owcache/dl/ || true
+          du -sh /owcache/"${KEY}"/build_dir /owcache/"${KEY}"/staging_dir /owcache/dl 2>/dev/null || true
 
       - name: Upload firmware artifacts (safety net)
         uses: actions/upload-artifact@v4
