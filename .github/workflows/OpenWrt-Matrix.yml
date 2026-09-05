@@ -371,6 +371,7 @@ jobs:
         env:
           PREFIX: ${{ env.artifact_prefix }}
           TAG: ${{ env.latest_release }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 - <<'PYEOF'
           import json, os, urllib.request
