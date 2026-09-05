@@ -376,7 +376,7 @@ jobs:
           prerelease: false
           tag: ${{ env.latest_release }}
           commit: "25.12"
-          replacesArtifacts: true
+          replacesArtifacts: false
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: ./artifact/*.zip
 
