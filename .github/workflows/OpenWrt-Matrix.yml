@@ -247,6 +247,11 @@ jobs:
           b = os.path.join(dst, 'usr', 'bin', 'daed')
           print('payload daed bytes:', os.path.getsize(b))
           print('payload entries:', sum(len(fs) for _, _, fs in os.walk(dst)))
+          # daemon serves the WebUI from /usr/share/daed/web by default; ship it
+          web_src = os.path.join('PATCH', 'daed-web')
+          web_dst = os.path.join(dst, 'usr', 'share', 'daed', 'web')
+          shutil.copytree(web_src, web_dst)
+          print('web assets copied:', sum(len(fs) for _, _, fs in os.walk(web_dst)))
           PYEOF
           ls -lh openwrt/package/new/daed/prebuilt-data/usr/bin/daed
 
