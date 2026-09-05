@@ -217,6 +217,29 @@ jobs:
           chmod +x package/new/kixdns/prebuilt/kixdns
           ls -lh package/new/kixdns/prebuilt/kixdns
 
+      - name: Fetch DaeNext daed prebuilt (static musl)
+        run: |
+          set -e
+          export A=aarch64-unknown-linux-musl
+          [ "${{ matrix.arch }}" = "x86/64" ] && A=x86_64-unknown-linux-musl
+          python3 - <<'PYEOF'
+          import json, urllib.request, tarfile, os, shutil
+          A = os.environ['A']
+          api = 'https://api.github.com/repos/Quan-0505/OpenWrt/releases/tags/daenext-core'
+          rel = json.load(urllib.request.urlopen(api, timeout=60))
+          asset = next(a for a in rel['assets'] if a['name'].startswith('daed-' + A + '-') and a['name'].endswith('.tar.gz'))
+          print('asset:', asset['name'])
+          urllib.request.urlretrieve(asset['browser_download_url'], '/tmp/daed.tgz')
+          with tarfile.open('/tmp/daed.tgz', 'r:gz') as tf:
+              tf.extractall('/tmp/daedx')
+          dst = os.path.join('openwrt', 'package', 'new', 'daed', 'prebuilt', 'daed')
+          os.makedirs(os.path.dirname(dst), exist_ok=True)
+          shutil.copy(os.path.join('/tmp/daedx', 'daed-' + A), dst)
+          print('copied', os.path.getsize(dst), 'bytes')
+          PYEOF
+          chmod +x openwrt/package/new/daed/prebuilt/daed
+          ls -lh openwrt/package/new/daed/prebuilt/daed
+
       - name: QTMDFW4
         working-directory: ${{ github.workspace }}/openwrt
         run: |
