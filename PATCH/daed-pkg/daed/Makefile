@@ -1,12 +1,12 @@
-# DaeNext (Rust-native dae/daed) minimal binary package for this fork.
-# The daed daemon binary is a fully static musl build produced by
-# .github/workflows/build-daenext.yml (ksong008/DaeNext @ work/boringssl)
-# and downloaded into prebuilt/daed by the firmware workflow.
+# daed (DaedNext, Rust-native) v3.1.1 sticky - prebuilt package for this fork.
+# Payload (usr/, etc/) is unpacked at build time by the firmware workflow from
+# the rust-daed release .apk (Quan-0505/rust-daed, tag v3.1.1-sticky) into
+# prebuilt-data/. No compilation happens here.
 
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=daed
-PKG_VERSION:=a2c9519
+PKG_VERSION:=3.1.1
 PKG_RELEASE:=1
 
 PKG_LICENSE:=AGPL-3.0-only
@@ -17,15 +17,14 @@ include $(INCLUDE_DIR)/package.mk
 define Package/daed
   SECTION:=net
   CATEGORY:=Network
-  TITLE:=DaeNext transparent proxy daemon (Rust dae/daed)
-  URL:=https://github.com/ksong008/DaeNext
-  DEPENDS:=+vmlinux-btf +kmod-sched-core +kmod-sched-bpf +kmod-veth
+  TITLE:=daed (DaedNext Rust-native) transparent proxy v3.1.1 sticky
+  URL:=https://github.com/Quan-0505/rust-daed
 endef
 
 define Package/daed/description
-  Rust-native dae core workspace product daemon (eBPF transparent proxy,
-  daed product API). Prebuilt static musl binary; web UI assets shipped
-  under /usr/share/daed/web and served by the daemon itself.
+  Rust-native dae/daed product daemon (eBPF transparent proxy, embedded
+  WebUI on :2023, sticky-ip build). Static musl binary; WebUI and geo
+  data bundled. Requires a BTF-enabled kernel.
 endef
 
 define Package/daed/conffiles
@@ -33,15 +32,8 @@ define Package/daed/conffiles
 endef
 
 define Package/daed/install
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(CURDIR)/prebuilt/daed $(1)/usr/bin/daed
-
-	$(INSTALL_DIR) $(1)/usr/share/daed/web
-	$(CP) $(CURDIR)/web-assets/. $(1)/usr/share/daed/web/
-
-	$(INSTALL_DIR) $(1)/etc/config $(1)/etc/init.d $(1)/etc/daed
-	$(INSTALL_CONF) $(CURDIR)/files/daed.config $(1)/etc/config/daed
-	$(INSTALL_BIN) $(CURDIR)/files/daed.init $(1)/etc/init.d/daed
+	$(INSTALL_DIR) $(1)
+	$(CP) $(CURDIR)/prebuilt-data/. $(1)/
 endef
 
 $(eval $(call BuildPackage,daed))
