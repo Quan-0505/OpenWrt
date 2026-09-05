@@ -1,0 +1,135 @@
+name: Build DaeNext core
+
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: "Target arch (aarch64 / x86_64 / both)"
+        required: false
+        default: aarch64
+        type: choice
+        options:
+          - aarch64
+          - x86_64
+          - both
+      commit:
+        description: "DaeNext commit to build (default: pinned work/boringssl)"
+        required: false
+        default: a2c9519e861d9c32f903335e671f8b2d45a390a3
+        type: string
+
+env:
+  BPF_LINKER_VERSION: "0.10.3"
+  DN_COMMIT: ${{ inputs.commit || 'a2c9519e861d9c32f903335e671f8b2d45a390a3' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    permissions:
+      contents: write
+    steps:
+      - name: Select arches
+        id: arches
+        run: |
+          case "${{ inputs.arch }}" in
+            aarch64) echo "arches=aarch64-unknown-linux-musl" ;;
+            x86_64) echo "arches=x86_64-unknown-linux-musl" ;;
+            both) echo "arches=aarch64-unknown-linux-musl x86_64-unknown-linux-musl" ;;
+          esac >> "$GITHUB_OUTPUT"
+
+      - name: Checkout DaeNext (pinned commit)
+        uses: actions/checkout@v4
+        with:
+          repository: ksong008/DaeNext
+          ref: ${{ env.DN_COMMIT }}
+          path: daenext
+          fetch-depth: 1
+
+      - name: Install system deps
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
+          sudo apt-get install -y --no-install-recommends \
+            build-essential clang llvm cmake perl pkg-config libelf-dev golang-go zip
+
+      - name: Install Rust stable + targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-musl,x86_64-unknown-linux-musl
+
+      - name: Install nightly (rust-src) for embedded eBPF
+        run: |
+          rustup toolchain install nightly --profile minimal --component rust-src
+          rustup target add --toolchain nightly bpfel-unknown-none || true
+          cargo install bpf-linker --version "${BPF_LINKER_VERSION}" --locked
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: daenext
+
+      - name: Install musl cross toolchains
+        uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          targets: aarch64-unknown-linux-musl,x86_64-unknown-linux-musl
+
+      - name: Build DaeNext daed (static musl)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd daenext
+          export DAE_RUST_NATIVE_BPF_TOOLCHAIN=nightly
+          for target in ${{ steps.arches.outputs.arches }}; do
+            echo "==== building ${target} ===="
+            if [ "${target}" = "aarch64-unknown-linux-musl" ]; then
+              cpuflag="-C target-cpu=generic"
+            else
+              cpuflag="-C target-cpu=x86-64-v2"
+            fi
+            export CARGO_TARGET_${target^^}_RUSTFLAGS="-C target-feature=+crt-static ${cpuflag}"
+            cargo build --locked --profile production-performance --target "${target}" -p dae-daemon --bin daed
+            bin="target/${target}/production-performance/daed"
+            test -s "${bin}"
+            file "${bin}"
+            mkdir -p dist
+            cp "${bin}" "dist/daed-${target}"
+          done
+
+      - name: Smoke test (qemu-user) + package
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y --no-install-recommends qemu-user-static || true
+          cd daenext
+          sha_short=$(git rev-parse --short=12 HEAD)
+          for target in ${{ steps.arches.outputs.arches }}; do
+            bin="dist/daed-${target}"
+            case "${target}" in
+              aarch64*) qemu_cmd="qemu-aarch64-static" ;;
+              *) qemu_cmd="qemu-x86_64-static" ;;
+            esac
+            if command -v "${qemu_cmd}" >/dev/null 2>&1; then
+              "${qemu_cmd}" "${bin}" --version || echo "qemu smoke non-fatal"
+            fi
+            tar -czf "dist/daed-${target}-${sha_short}.tar.gz" -C dist "daed-${target}"
+            sha256sum "dist/daed-${target}-${sha_short}.tar.gz" | tee "dist/daed-${target}-${sha_short}.sha256"
+          done
+          ls -lh dist
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: daenext-bins
+          path: daenext/dist/daed-*
+          retention-days: 14
+
+      - name: Publish to daenext-core tag
+        uses: ncipollo/release-action@main
+        with:
+          tag: daenext-core
+          name: DaeNext core binaries
+          allowUpdates: true
+          replacesArtifacts: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: daenext/dist/daed-*.tar.gz,daenext/dist/daed-*.sha256
