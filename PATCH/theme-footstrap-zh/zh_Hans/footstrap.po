@@ -1,0 +1,343 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-theme-footstrap\n"
+"Language: zh_Hans\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Accent"
+msgstr "强调色"
+
+msgid "As in file"
+msgstr "同文件"
+
+msgid "Authorization Required"
+msgstr "需要授权"
+
+msgid "Auto"
+msgstr "自动"
+
+msgid "Auto-collapse"
+msgstr "自动折叠"
+
+msgid "Background"
+msgstr "背景"
+
+msgid "Barely visible %s"
+msgstr "几乎不可见 %s"
+
+msgid "Borders"
+msgstr "边框"
+
+msgid "Cards"
+msgstr "卡片"
+
+msgid "Choose SVG"
+msgstr "选择 SVG"
+
+msgid "Choose image"
+msgstr "选择图片"
+
+msgid "Clearly visible %s"
+msgstr "清晰可见 %s"
+
+msgid "Collapse menu"
+msgstr "折叠菜单"
+
+msgid "Colours"
+msgstr "配色"
+
+msgid "Compact"
+msgstr "紧凑"
+
+msgid "Confirm reset"
+msgstr "确认重置"
+
+msgid "Content width"
+msgstr "内容宽度"
+
+msgid "Contrast %s:1 (WCAG AA wants %s:1 here)"
+msgstr "对比度 %s:1（此处需满足 WCAG AA 的 %s:1）"
+
+msgid "Controls"
+msgstr "控件"
+
+msgid "Could not process the image."
+msgstr "无法处理该图片。"
+
+msgid "Could not save the default. Reload the page and try again."
+msgstr "无法保存默认值。请刷新页面后重试。"
+
+msgid "Danger"
+msgstr "危险"
+
+msgid "Dark"
+msgstr "深色"
+
+msgid "Density"
+msgstr "密度"
+
+msgid "Dim"
+msgstr "暗淡"
+
+msgid "Easy to read %s"
+msgstr "易读 %s"
+
+msgid "Expand menu"
+msgstr "展开菜单"
+
+msgid "File"
+msgstr "文件"
+
+msgid "Footstrap Appearance router-wide look (Save to router) and the login background and pattern uploads"
+msgstr "Footstrap 外观（保存到路由器）的全局样式，以及登录背景与图案上传"
+
+msgid "Footstrap theme settings apply at once and are stored permanently in this browser."
+msgstr "Footstrap 主题设置即时生效，并永久保存在当前浏览器中。"
+
+msgid "Go to firmware upgrade..."
+msgstr "前往固件升级…"
+
+msgid "Go to password configuration..."
+msgstr "前往密码设置…"
+
+msgid "Good"
+msgstr "良好"
+
+msgid "Hard to read %s — large text only"
+msgstr "难以阅读 %s — 仅限大字"
+
+msgid "Interface"
+msgstr "界面"
+
+msgid "Invalid username and/or password! Please try again."
+msgstr "用户名和/或密码无效！请重试。"
+
+msgid "JavaScript required!"
+msgstr "需要 JavaScript！"
+
+msgid "Keep open"
+msgstr "保持展开"
+
+msgid "Large"
+msgstr "大"
+
+msgid "Layout"
+msgstr "布局"
+
+msgid "Light"
+msgstr "浅色"
+
+msgid "Log in"
+msgstr "登录"
+
+msgid "Log out"
+msgstr "退出登录"
+
+msgid "Lua compatibility mode active"
+msgstr "正在使用 Lua 兼容模式"
+
+msgid "Memory"
+msgstr "内存"
+
+msgid "Menu"
+msgstr "菜单"
+
+msgid "No changes to settings will be stored and are lost after rebooting. This mode should only be used to install a firmware upgrade"
+msgstr "所有设置更改均不会被保存，重启后丢失。此模式仅应用于安装固件升级"
+
+msgid "No pages found"
+msgstr "未找到页面"
+
+msgid "No password set!"
+msgstr "未设置密码！"
+
+msgid "Normal"
+msgstr "标准"
+
+msgid "Off"
+msgstr "关"
+
+msgid "Pages"
+msgstr "页面"
+
+msgid "Palette"
+msgstr "调色板"
+
+msgid "Password"
+msgstr "密码"
+
+msgid "Pattern"
+msgstr "图案"
+
+msgid "Please choose an SVG file."
+msgstr "请选择 SVG 文件。"
+
+msgid "Please choose an image file."
+msgstr "请选择图片文件。"
+
+msgid "Please enter your username and password."
+msgstr "请输入您的用户名和密码。"
+
+msgid "Recently visited"
+msgstr "最近访问"
+
+msgid "Remove"
+msgstr "移除"
+
+msgid "Reset to built-in"
+msgstr "恢复内置"
+
+msgid "Reset to built-in — go back to the look the theme ships with."
+msgstr "恢复内置 — 回到主题出厂外观。"
+
+msgid "Reset to router"
+msgstr "跟随路由器"
+
+msgid "Reset to router — drop this browser's changes and follow the router."
+msgstr "跟随路由器 — 放弃当前浏览器的更改并采用路由器设置。"
+
+msgid "Rounding"
+msgstr "圆角"
+
+msgid "Save & Apply at the foot of the page belongs to the System form and does not store them."
+msgstr "页面底部的「保存并应用」属于系统表单，不会保存这些外观设置。"
+
+msgid "Save to router"
+msgstr "保存到路由器"
+
+msgid "Save to router — store this look on the router. Browsers with a look of their own keep it."
+msgstr "保存到路由器 — 将该外观保存到路由器。自带外观的浏览器仍保留其自身设置。"
+
+msgid "Saved look"
+msgstr "已保存的外观"
+
+msgid "Saved to router"
+msgstr "已保存到路由器"
+
+msgid "Saving"
+msgstr "保存中"
+
+msgid "Scale"
+msgstr "缩放"
+
+msgid "Search"
+msgstr "搜索"
+
+msgid "Search pages"
+msgstr "搜索页面"
+
+msgid "Search pages…"
+msgstr "搜索页面…"
+
+msgid "Sidebar"
+msgstr "侧边栏"
+
+msgid "Sidebar and bar"
+msgstr "侧边栏与顶栏"
+
+msgid "Skip to content"
+msgstr "跳转到内容"
+
+msgid "Start typing to find a page"
+msgstr "输入关键字查找页面"
+
+msgid "Storage"
+msgstr "存储"
+
+msgid "Strength"
+msgstr "强度"
+
+msgid "Submenus"
+msgstr "子菜单"
+
+msgid "Surfaces"
+msgstr "面板"
+
+msgid "System"
+msgstr "系统"
+
+msgid "System running in recovery (initramfs) mode."
+msgstr "系统正在以恢复（initramfs）模式运行。"
+
+msgid "Table"
+msgstr "表格"
+
+msgid "That SVG contains script or external references, which this theme will not install."
+msgstr "该 SVG 包含脚本或外部引用，本主题不会安装它。"
+
+msgid "That file could not be read."
+msgstr "无法读取该文件。"
+
+msgid "That file is not a readable image."
+msgstr "该文件不是可读取的图片。"
+
+msgid "That file is not an SVG image."
+msgstr "该文件不是 SVG 图片。"
+
+msgid "That file is too large."
+msgstr "该文件太大。"
+
+msgid "That image is too large."
+msgstr "该图片太大。"
+
+msgid "The router refused to delete the file (ubus status %d)."
+msgstr "路由器拒绝删除该文件（ubus 状态 %d）。"
+
+msgid "Theme"
+msgstr "主题"
+
+msgid "There is no password set on this router. Please configure a root password to protect the web interface."
+msgstr "此路由器未设置密码。请配置 root 密码以保护 Web 界面。"
+
+msgid "This browser is not storing preferences (site data is blocked), so a change here lasts until you reload. Saving as default still works and applies to every browser."
+msgstr "当前浏览器未保存偏好设置（站点数据被阻止），因此此处的更改仅在刷新前有效。「保存为默认」仍会生效并作用于所有浏览器。"
+
+msgid "This theme is not translated on this router yet."
+msgstr "此主题尚未提供该语言翻译。"
+
+msgid "Tint (router identification)"
+msgstr "色调（路由器标识）"
+
+msgid "Tint strength"
+msgstr "色调强度"
+
+msgid "Too faint to read %s"
+msgstr "过淡难以阅读 %s"
+
+msgid "Top"
+msgstr "顶部"
+
+msgid "Upload failed."
+msgstr "上传失败。"
+
+msgid "Uploading…"
+msgstr "上传中…"
+
+msgid "Username"
+msgstr "用户名"
+
+msgid "Wallpaper"
+msgstr "壁纸"
+
+msgid "Warning"
+msgstr "警告"
+
+msgid "You must enable JavaScript in your browser or LuCI will not work properly."
+msgstr "您必须在浏览器中启用 JavaScript，否则 LuCI 将无法正常工作。"
+
+msgid "in the sidebar"
+msgstr "位于侧边栏"
+
+msgid "on a card"
+msgstr "位于卡片上"
+
+msgid "on a control"
+msgstr "位于控件上"
+
+msgid "on the canvas"
+msgstr "位于画布上"
+
+msgid "the uploaded file could not be removed either; it is still on the router."
+msgstr "上传的文件也无法删除，它仍保留在路由器上。"
+
