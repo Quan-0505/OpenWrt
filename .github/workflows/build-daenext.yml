@@ -69,33 +69,22 @@ jobs:
         with:
           workspaces: daenext
 
-      - name: Install musl cross toolchains (musl.cc)
+      - name: Install zig + cargo-zigbuild (musl static cross)
         shell: bash
         run: |
           set -euo pipefail
-          sudo mkdir -p /opt/musl
-          sudo chown runner:runner /opt/musl
-          cd /opt/musl
-          page=$(curl -fsSL --retry 3 https://musl.cc)
-          for arch in aarch64-linux-musl-cross x86_64-linux-musl-cross; do
-            url=$(printf '%s' "${page}" | grep -oE "https?://[^\"']*${arch}\.tgz" | head -n 1)
-            echo "downloading ${url}"
-            curl -fsSL --retry 3 -o "${arch}.tgz" "${url}"
-            tar -xzf "${arch}.tgz"
-          done
-          ls -d /opt/musl/*/
-          {
-            echo "PATH=/opt/musl/aarch64-linux-musl-cross/bin:/opt/musl/x86_64-linux-musl-cross/bin:$PATH"
-            echo "CC_aarch64_unknown_linux_musl=/opt/musl/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc"
-            echo "CXX_aarch64_unknown_linux_musl=/opt/musl/aarch64-linux-musl-cross/bin/aarch64-linux-musl-g++"
-            echo "AR_aarch64_unknown_linux_musl=/opt/musl/aarch64-linux-musl-cross/bin/aarch64-linux-musl-ar"
-            echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=/opt/musl/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc"
-            echo "CC_x86_64_unknown_linux_musl=/opt/musl/x86_64-linux-musl-cross/bin/x86_64-linux-musl-gcc"
-            echo "CXX_x86_64_unknown_linux_musl=/opt/musl/x86_64-linux-musl-cross/bin/x86_64-linux-musl-g++"
-            echo "AR_x86_64_unknown_linux_musl=/opt/musl/x86_64-linux-musl-cross/bin/x86_64-linux-musl-ar"
-            echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=/opt/musl/x86_64-linux-musl-cross/bin/x86_64-linux-musl-gcc"
-          } >> "$GITHUB_ENV"
-          /opt/musl/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc --version | head -n 1
+          sudo mkdir -p /opt/zig
+          sudo chown runner:runner /opt/zig
+          cd /opt/zig
+          index=$(curl -fsSL --retry 3 https://ziglang.org/download/index.json)
+          url=$(printf '%s' "${index}" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["0.13.0"]["x86_64-linux"]["tarball"])')
+          echo "zig url: ${url}"
+          curl -fsSL --retry 3 -o zig.tar.xz "${url}"
+          tar -xJf zig.tar.xz
+          mv zig-linux-x86_64-* zig
+          ./zig/zig version
+          cargo install cargo-zigbuild --locked
+          echo "PATH=/opt/zig/zig:$HOME/.cargo/bin:$PATH" >> "$GITHUB_ENV"
 
       - name: Build DaeNext daed (static musl)
         shell: bash
@@ -111,7 +100,7 @@ jobs:
               cpuflag="-C target-cpu=x86-64-v2"
             fi
             export CARGO_TARGET_${target^^}_RUSTFLAGS="-C target-feature=+crt-static ${cpuflag}"
-            cargo build --locked --profile production-performance --target "${target}" -p dae-daemon --bin daed
+            cargo zigbuild --locked --profile production-performance --target "${target}" -p dae-daemon --bin daed
             bin="target/${target}/production-performance/daed"
             test -s "${bin}"
             file "${bin}"
