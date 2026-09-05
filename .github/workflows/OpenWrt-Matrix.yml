@@ -366,6 +366,35 @@ jobs:
           path: ./artifact/*.zip
           retention-days: 7
 
+      - name: Clean stale release assets (this device)
+        if: inputs.build_firmware
+        env:
+          PREFIX: ${{ env.artifact_prefix }}
+          TAG: ${{ env.latest_release }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, urllib.request
+          repo = os.environ['GITHUB_REPOSITORY']
+          tok = os.environ['GITHUB_TOKEN']
+          prefix = os.environ['PREFIX']
+          tag = os.environ['TAG']
+          def api(path, method='GET'):
+              r = urllib.request.Request('https://api.github.com/repos/' + repo + path, method=method,
+                  headers={'Authorization': 'Bearer ' + tok, 'Accept': 'application/vnd.github+json',
+                           'User-Agent': 'dsh'})
+              with urllib.request.urlopen(r, timeout=60) as resp:
+                  raw = resp.read()
+                  return json.loads(raw) if raw else None
+          rel = api('/releases/tags/' + tag)
+          if not rel:
+              print('release not found, nothing to clean'); raise SystemExit(0)
+          for a in rel['assets']:
+              n = a['name']
+              if n.startswith(prefix + '-') and n.endswith('.zip'):
+                  print('deleting stale asset', n)
+                  api('/releases/assets/%d' % a['id'], method='DELETE')
+          PYEOF
+
       - name: Create release
         if: inputs.build_firmware
         id: create_release
