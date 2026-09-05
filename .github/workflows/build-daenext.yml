@@ -72,7 +72,7 @@ jobs:
       - name: Install musl cross toolchains
         uses: taiki-e/setup-cross-toolchain-action@v1
         with:
-          targets: aarch64-unknown-linux-musl,x86_64-unknown-linux-musl
+          target: aarch64-unknown-linux-musl x86_64-unknown-linux-musl
 
       - name: Build DaeNext daed (static musl)
         shell: bash
