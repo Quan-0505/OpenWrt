@@ -165,8 +165,8 @@ git clone https://github.com/QiuSimons/vmlinux-btf ./package/new/vmlinux-btf
 git clone -q --depth 1 -b v1.5.3 https://github.com/JohnsonRan/luci-app-kixdns /tmp/luci-app-kixdns
 cp -rf /tmp/luci-app-kixdns/kixdns ./package/new/kixdns
 cp -rf /tmp/luci-app-kixdns/luci-app-kixdns ./package/new/luci-app-kixdns
-# DAED（DaeNext Rust 内核 + 预构建 web UI）：整包替换 OpenWrt-Add 的 Go daed/luci-app-daed
-# 二进制由 workflow 从 daenext-core tag 下载到 package/new/daed/prebuilt/
+# DAED（DaedNext Rust 内核 sticky 版）：整包替换 OpenWrt-Add 的 Go daed/luci-app-daed
+# 载荷由 workflow 从 Quan-0505/rust-daed v3.1.1-sticky 的 <设备>.apk 解包到 package/new/daed/prebuilt-data/
 rm -rf ./package/new/luci-app-daed
 rm -rf ./package/new/daed
 cp -rf ../PATCH/daed-pkg/daed ./package/new/daed
