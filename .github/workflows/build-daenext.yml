@@ -69,10 +69,33 @@ jobs:
         with:
           workspaces: daenext
 
-      - name: Install musl cross toolchains
-        uses: taiki-e/setup-cross-toolchain-action@v1
-        with:
-          target: aarch64-unknown-linux-musl x86_64-unknown-linux-musl
+      - name: Install musl cross toolchains (musl.cc)
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo mkdir -p /opt/musl
+          sudo chown runner:runner /opt/musl
+          cd /opt/musl
+          page=$(curl -fsSL --retry 3 https://musl.cc)
+          for arch in aarch64-linux-musl-cross x86_64-linux-musl-cross; do
+            url=$(printf '%s' "${page}" | grep -oE "https?://[^\"']*${arch}\.tgz" | head -n 1)
+            echo "downloading ${url}"
+            curl -fsSL --retry 3 -o "${arch}.tgz" "${url}"
+            tar -xzf "${arch}.tgz"
+          done
+          ls -d /opt/musl/*/
+          {
+            echo "PATH=/opt/musl/aarch64-linux-musl-cross/bin:/opt/musl/x86_64-linux-musl-cross/bin:$PATH"
+            echo "CC_aarch64_unknown_linux_musl=/opt/musl/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc"
+            echo "CXX_aarch64_unknown_linux_musl=/opt/musl/aarch64-linux-musl-cross/bin/aarch64-linux-musl-g++"
+            echo "AR_aarch64_unknown_linux_musl=/opt/musl/aarch64-linux-musl-cross/bin/aarch64-linux-musl-ar"
+            echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=/opt/musl/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc"
+            echo "CC_x86_64_unknown_linux_musl=/opt/musl/x86_64-linux-musl-cross/bin/x86_64-linux-musl-gcc"
+            echo "CXX_x86_64_unknown_linux_musl=/opt/musl/x86_64-linux-musl-cross/bin/x86_64-linux-musl-g++"
+            echo "AR_x86_64_unknown_linux_musl=/opt/musl/x86_64-linux-musl-cross/bin/x86_64-linux-musl-ar"
+            echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=/opt/musl/x86_64-linux-musl-cross/bin/x86_64-linux-musl-gcc"
+          } >> "$GITHUB_ENV"
+          /opt/musl/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc --version | head -n 1
 
       - name: Build DaeNext daed (static musl)
         shell: bash
