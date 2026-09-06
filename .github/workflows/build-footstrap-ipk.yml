@@ -75,7 +75,8 @@ jobs:
                       return json.loads(rb) if rb else None
               except urllib.error.HTTPError as e:
                   print('HTTP', e.code, path, e.read()[:200]); return None
-          hits = glob.glob(sdkdir + '/bin/packages/*/luci-theme-footstrap_*.ipk') + glob.glob(sdkdir + '/bin/packages/*/luci-i18n-*footstrap*.ipk')
+          hits = glob.glob(sdkdir + '/bin/packages/**/*footstrap*.ipk', recursive=True)
+          hits = [h for h in hits if 'luci-theme-footstrap' in os.path.basename(h) or 'luci-i18n-footstrap' in os.path.basename(h)]
           hits = sorted(set(hits))
           print('ipks:', hits)
           if not hits:
