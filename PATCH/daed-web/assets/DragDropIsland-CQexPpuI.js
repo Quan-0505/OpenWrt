@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-Bg_NI1en.js";import{n as t}from"./dnd.esm-DBC9B2Ia.js";var n=e();function r(e){return(0,n.jsx)(t,{...e})}export{r as OrchestrateDragDropContext};
