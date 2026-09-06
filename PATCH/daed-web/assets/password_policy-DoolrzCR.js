@@ -1,0 +1,1 @@
+import{R as e}from"./page_lifecycle-Bloa0cj_.js";var t=`Password must contain letters and numbers, and be at least 8 characters long`,n=/[a-z]/i,r=/\d/,i=e().min(8,t).refine(e=>n.test(e)&&r.test(e),t),a=e().min(1,`Password is required`);export{a as n,i as t};
