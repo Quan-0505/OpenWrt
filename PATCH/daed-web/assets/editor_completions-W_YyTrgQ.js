@@ -1,0 +1,1 @@
+import{$t as e}from"./page_lifecycle-Bloa0cj_.js";var t=e([]);function n(e){t.set(e)}function r(){return t.get()}function i(e){return e.map(e=>({label:e,kind:`variable`,detail:`User group outbound`,documentation:`Route traffic to group: ${e}`,insertText:e}))}export{n as i,t as n,r,i as t};
