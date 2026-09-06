@@ -2,7 +2,7 @@
 
 # OpenWrt
 
-**Quan-0505 精简定制固件 · kixdns + DaedNext Rust 版 daed + footstrap 中文主题**
+**Quan-0505 精简固件 · kixdns + DaedNext Rust 版 daed + footstrap 中文主题**
 
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-25.12.5-orange.svg)](https://github.com/Quan-0505/OpenWrt/releases/tag/25.12.5)
