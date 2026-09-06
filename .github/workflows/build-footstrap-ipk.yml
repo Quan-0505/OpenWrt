@@ -61,22 +61,22 @@ jobs:
           import glob, json, os, urllib.request, urllib.parse
           repo = os.environ['GITHUB_REPOSITORY']; tok = os.environ['GITHUB_TOKEN']
           sdkdir = open('sdkdir').read().strip()
-          def api(path, method='GET', body=None, ctype=None):
+          def api(path, method='GET', body=None, ctype=None, host='api.github.com'):
               headers = {'Authorization': 'Bearer ' + tok, 'User-Agent': 'dsh', 'Accept': 'application/vnd.github+json'}
               data = None
               if ctype == 'json':
                   data = json.dumps(body).encode(); headers['Content-Type'] = 'application/json'
               elif ctype:
                   data = body; headers['Content-Type'] = ctype
-              r = urllib.request.Request('https://api.github.com/repos/' + repo + path, method=method, headers=headers, data=data)
+              r = urllib.request.Request('https://' + host + '/repos/' + repo + path, method=method, headers=headers, data=data)
               try:
                   with urllib.request.urlopen(r, timeout=300) as resp:
                       rb = resp.read()
                       return json.loads(rb) if rb else None
               except urllib.error.HTTPError as e:
-                  print('HTTP', e.code, path, e.read()[:200]); return None
+                  print('HTTP', e.code, host + path, e.read()[:200]); return None
           hits = glob.glob(sdkdir + '/bin/packages/**/*footstrap*.ipk', recursive=True)
-          hits = [h for h in hits if 'luci-theme-footstrap' in os.path.basename(h) or 'luci-i18n-footstrap' in os.path.basename(h)]
+          hits = [h for h in hits if ('luci-theme-footstrap_1' in os.path.basename(h) or 'zh-cn' in os.path.basename(h))]
           hits = sorted(set(hits))
           print('ipks:', hits)
           if not hits:
@@ -87,6 +87,6 @@ jobs:
           rid = rel['id']
           for f in hits:
               name = os.path.basename(f)
-              api('/releases/%d/assets?name=%s' % (rid, urllib.parse.quote(name)), 'POST', open(f, 'rb').read(), 'application/vnd.debian.binary-package')
+              api('/releases/%d/assets?name=%s' % (rid, urllib.parse.quote(name)), 'POST', open(f, 'rb').read(), 'application/vnd.debian.binary-package', host='uploads.github.com')
               print('uploaded', name)
           PYEOF
