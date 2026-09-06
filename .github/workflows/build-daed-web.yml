@@ -1,0 +1,40 @@
+name: Build daed web (DaedNext v3.1.0)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@main
+        with:
+          ref: 25.12
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Clone DaedNext and build web
+        run: |
+          git clone -q --depth 1 -b work/boringssl https://github.com/ksong008/DaedNext _d
+          cd _d
+          corepack enable
+          pnpm install
+          pnpm --filter daed build
+          ls -la apps/web/dist | head
+
+      - name: Commit dist to daed-web-dist branch
+        run: |
+          git config user.name 'GitHub Actions'
+          git config user.email 'noreply@github.com'
+          rm -rf PATCH/daed-web
+          cp -r _d/apps/web/dist PATCH/daed-web
+          git add -A PATCH/daed-web
+          git commit -q -m "daed-web: build DaedNext v3.1.0 web dist"
+          git push -q origin HEAD:daed-web-dist
+          echo 'pushed daed-web-dist'
