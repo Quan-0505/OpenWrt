@@ -323,8 +323,8 @@ jobs:
           if [ "${{ inputs.upload_source }}" = "true" ] && [ -f ../${{ env.openwrt_source_name }} ]; then
             rm ../${{ env.openwrt_source_name }}
           fi
-          make download -j$(( $(nproc) > 8 ? 8 : $(nproc) ))
-          make -j$(( $(nproc) > 8 ? 8 : $(nproc) )) package/network/utils/nftables/refresh V=s
+          make download -j$(( $(nproc) > 4 ? 4 : $(nproc) ))
+          make -j$(( $(nproc) > 4 ? 4 : $(nproc) )) package/network/utils/nftables/refresh V=s
 
       # build_firmware
       - name: Compile Openwrt
@@ -333,7 +333,7 @@ jobs:
         id: compileopenwrt
         continue-on-error: true
         run: |
-          IGNORE_ERRORS=1 make -j$(( $(nproc) > 8 ? 8 : $(nproc) ))
+          IGNORE_ERRORS=1 make -j$(( $(nproc) > 4 ? 4 : $(nproc) ))
           echo $?
       - name: If Error
         if: steps.compileopenwrt.outcome == 'failure'
