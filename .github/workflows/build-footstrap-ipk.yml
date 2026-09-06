@@ -17,13 +17,15 @@ jobs:
 
       - name: Pick 24.10 SDK
         run: |
-          base=$(curl -s https://downloads.openwrt.org/releases/24.10/ | grep -oE 'href="24\.10\.[0-9]+/"' | grep -oE '24\.10\.[0-9]+' | sort -V | tail -1)
+          base=$(curl -s https://downloads.openwrt.org/releases/ | grep -oE 'href="24\.10\.[0-9]+/"' | grep -oE '24\.10\.[0-9]+' | sort -V | tail -1)
           echo "rel=$base"
-          sdk=$(curl -s "https://downloads.openwrt.org/releases/${base}/targets/x86/64/" | grep -oE 'openwrt-sdk-[^"<]+x86-64[^"<]*\.tar\.xz' | head -1)
+          sdk=$(curl -s "https://downloads.openwrt.org/releases/${base}/targets/x86/64/" | grep -oE 'openwrt-sdk-[^"<]+\.tar\.zst' | head -1)
           echo "sdk=$sdk"
-          curl -sL -o sdk.tar.xz "https://downloads.openwrt.org/releases/${base}/targets/x86/64/${sdk}"
-          tar xf sdk.tar.xz
+          command -v zstd >/dev/null || sudo apt-get -y -qq install zstd
+          curl -sL -o sdk.tar.zst "https://downloads.openwrt.org/releases/${base}/targets/x86/64/${sdk}"
+          tar --zstd -xf sdk.tar.zst
           ls -d openwrt-sdk-*/ > sdkdir
+          cat sdkdir
 
       - name: Setup feeds and package
         run: |
