@@ -37,7 +37,7 @@ on:
 
 jobs:
   setup:
-    runs-on: self-hosted
+    runs-on: ubuntu-24.04
     if: github.event.repository.owner.id == github.event.sender.id
     steps:
       - id: set-matrix
@@ -81,10 +81,7 @@ jobs:
       latest_release: dummy
       KIXDNS_RELEASE_TAG: dummy
 
-    runs-on: self-hosted
-    container:
-      image: localhost:5000/ow-build:debian13
-      options: --volume /build/owcache:/owcache
+    runs-on: ubuntu-24.04
     if: github.event.repository.owner.id == github.event.sender.id
     strategy:
       fail-fast: false
@@ -151,18 +148,42 @@ jobs:
           echo -e "Total CPU cores\t: $(nproc)"
           cat /proc/cpuinfo | grep 'model name'
 
+      - name: Maximize build space
+        if: inputs.build_firmware
+        uses: smallprogram/maximize-build-space@master
+        with:
+          swap-size-mb: 1024
+          temp-reserve-mb: 4608
+          root-reserve-mb: 3584
+          remove-dotnet: "true"
+          remove-android: "true"
+          remove-haskell: "true"
+          remove-codeql: "true"
+
       - name: Checkout
         uses: actions/checkout@main
 
-      - name: Init build dependencies (no-op on self-hosted image)
+      - name: Init build dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
-          git config --global user.name 'GitHub Actions' || true
-          git config --global user.email 'noreply@github.com' || true
+          sudo -E apt-get -qq update
+          sudo /bin/bash -c "$(curl -sL https://git.io/vokNn)"
+          sudo -E apt-fast -y -qq install asciidoc bash bcc bin86 binutils bison bzip2 clang file flex g++ g++-multilib gawk gcc-multilib gettext git gzip help2man intltool libbpf-dev libboost-dev libelf-dev libncurses-dev libssl-dev libthread-queue-any-perl libusb-dev libxml-parser-perl linux-tools-generic llvm make patch perl-modules pkg-config python3-dev python3-pip python3-pyelftools python3-setuptools rsync sharutils swig time unzip util-linux wget xsltproc zlib1g-dev zip zstd
+          sudo -E apt-fast -y -qq install dos2unix dwarves jq npm quilt
+          sudo -E npm install -g pnpm
+          sudo -E npm install -g n
+          sudo -E n stable
+          pip3 install --user -U pylibfdt --break-system-packages
+          sudo -E apt-get -qq autoremove --purge
+          sudo -E apt-get -qq clean
+          sudo -E git config --global user.name 'GitHub Actions' && git config --global user.email 'noreply@github.com'
+          sudo -E git config --global core.abbrev auto
           df -h
 
       - name: Prepare Mixedwrt
         run: |
-          sudo chown -R runner:runner "${{ github.workspace }}" || true
+          sudo chown -R runner:runner "${{ github.workspace }}"
           cp -r ./SCRIPTS/${{ matrix.script_dir }}/. ./SCRIPTS/
           cp -r ./SCRIPTS/. ./
           /bin/bash 01_get_ready.sh
@@ -297,25 +318,6 @@ jobs:
             yaof-dl-${{ env.latest_release }}-
             yaof-dl-
 
-      - name: Restore persistent build cache (self-hosted /owcache)
-        if: inputs.build_firmware
-        run: |
-          KEY=${{ matrix.name }}
-          mkdir -p /owcache/"${KEY}" /owcache/dl
-          for d in build_dir staging_dir; do
-            if [ -d /owcache/"${KEY}/${d}" ]; then
-              echo "restoring ${d}"
-              mkdir -p "openwrt/${d}"
-              rsync -a /owcache/"${KEY}/${d}"/ "openwrt/${d}/" || true
-            fi
-          done
-          if [ -d /owcache/dl ] && [ "$(ls -A /owcache/dl | head -1)" ]; then
-            echo "restoring shared dl"
-            mkdir -p openwrt/dl
-            rsync -a /owcache/dl/ openwrt/dl/ || true
-          fi
-          du -sh openwrt/dl openwrt/build_dir openwrt/staging_dir 2>/dev/null || true
-
       - name: Make Download
         if: inputs.build_firmware
         working-directory: ${{ github.workspace }}/openwrt
@@ -323,8 +325,8 @@ jobs:
           if [ "${{ inputs.upload_source }}" = "true" ] && [ -f ../${{ env.openwrt_source_name }} ]; then
             rm ../${{ env.openwrt_source_name }}
           fi
-          make download -j$(( $(nproc) > 2 ? 2 : $(nproc) ))
-          make -j$(( $(nproc) > 2 ? 2 : $(nproc) )) package/network/utils/nftables/refresh V=s
+          make download -j50
+          make -j$(($(nproc) + 1)) package/network/utils/nftables/refresh V=s
 
       # build_firmware
       - name: Compile Openwrt
@@ -333,7 +335,7 @@ jobs:
         id: compileopenwrt
         continue-on-error: true
         run: |
-          IGNORE_ERRORS=1 make -j$(( $(nproc) > 2 ? 2 : $(nproc) ))
+          IGNORE_ERRORS=1 make -j$(($(nproc) + 1))
           echo $?
       - name: If Error
         if: steps.compileopenwrt.outcome == 'failure'
@@ -361,16 +363,6 @@ jobs:
           zip ${{ env.artifact_prefix }}-$(date +%Y-%m-%d)-${{ env.latest_release }}-ext4.zip ${{ env.ext4_zip }}
           zip ${{ env.artifact_prefix }}-$(date +%Y-%m-%d)-${{ env.latest_release }}-sfs.zip ${{ env.sfs_zip }}
           ls -Ahl
-
-      - name: Save persistent build cache (self-hosted /owcache)
-        if: steps.organize.outcome == 'success'
-        run: |
-          KEY=${{ matrix.name }}
-          mkdir -p /owcache/"${KEY}" /owcache/dl
-          rsync -a openwrt/build_dir/ /owcache/"${KEY}"/build_dir/ || true
-          rsync -a openwrt/staging_dir/ /owcache/"${KEY}"/staging_dir/ || true
-          rsync -a openwrt/dl/ /owcache/dl/ || true
-          du -sh /owcache/"${KEY}"/build_dir /owcache/"${KEY}"/staging_dir /owcache/dl 2>/dev/null || true
 
       - name: Upload firmware artifacts (safety net)
         uses: actions/upload-artifact@v4
