@@ -380,7 +380,7 @@ jobs:
           import glob, json, os, urllib.request, urllib.parse
           repo = os.environ['GITHUB_REPOSITORY']
           tok = os.environ['GITHUB_TOKEN']
-          def api(path, method='GET', body=None, ctype=None, raw=False):
+          def api(path, method='GET', body=None, ctype=None, host='api.github.com'):
               headers = {'Authorization': 'Bearer ' + tok, 'User-Agent': 'dsh',
                          'Accept': 'application/vnd.github+json'}
               data = None
@@ -388,18 +388,18 @@ jobs:
                   data = json.dumps(body).encode(); headers['Content-Type'] = 'application/json'
               elif ctype:
                   data = body; headers['Content-Type'] = ctype
-              r = urllib.request.Request('https://api.github.com/repos/' + repo + path, method=method, headers=headers, data=data)
+              r = urllib.request.Request('https://' + host + '/repos/' + repo + path, method=method, headers=headers, data=data)
               try:
                   with urllib.request.urlopen(r, timeout=300) as resp:
                       rawb = resp.read()
                       return rawb if raw else (json.loads(rawb) if rawb else None)
               except urllib.error.HTTPError as e:
-                  print('HTTP', e.code, path, e.read()[:200]); return None
+                  print('HTTP', e.code, host + path, e.read()[:200]); return None
           # find built packages (any package dir; arch 'all')
           hits = []
-          for pat in ['openwrt/bin/packages/*/luci-theme-footstrap_*.apk',
-                      'openwrt/bin/packages/*/luci-i18n-footstrap-zh_Hans_*.apk']:
-              hits += glob.glob(pat)
+          for pat in ['openwrt/bin/packages/**/luci-theme-footstrap_*.apk',
+                      'openwrt/bin/packages/**/luci-i18n-footstrap-zh_Hans_*.apk']:
+              hits += glob.glob(pat, recursive=True)
           hits = sorted(set(hits))
           print('package files:', hits)
           if not hits:
@@ -413,7 +413,7 @@ jobs:
           rid = rel['id']
           for f in hits:
               name = os.path.basename(f)
-              api('/releases/%d/assets?name=%s' % (rid, urllib.parse.quote(name)), 'POST', open(f, 'rb').read(), 'application/vnd.debian.binary-package')
+              api('/releases/%d/assets?name=%s' % (rid, urllib.parse.quote(name)), 'POST', open(f, 'rb').read(), 'application/vnd.debian.binary-package', host='uploads.github.com')
               print('uploaded', name)
           PYEOF
 
