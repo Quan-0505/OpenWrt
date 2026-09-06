@@ -395,11 +395,12 @@ jobs:
                       return rawb if raw else (json.loads(rawb) if rawb else None)
               except urllib.error.HTTPError as e:
                   print('HTTP', e.code, host + path, e.read()[:200]); return None
-          # find built packages (any package dir; arch 'all')
+          # find built packages (any package dir; arch 'all') via find -L (bin/packages/<arch> are symlinks)
+          import subprocess
           hits = []
-          for pat in ['openwrt/bin/packages/**/luci-theme-footstrap_*.apk',
-                      'openwrt/bin/packages/**/luci-i18n-footstrap-zh_Hans_*.apk']:
-              hits += glob.glob(pat, recursive=True)
+          for name in ['luci-theme-footstrap_*.apk', 'luci-i18n-footstrap*.apk']:
+              p = subprocess.run(['find', '-L', 'openwrt/bin', '-type', 'f', '-name', name], capture_output=True, text=True)
+              hits += p.stdout.split()
           hits = sorted(set(hits))
           print('package files:', hits)
           if not hits:
