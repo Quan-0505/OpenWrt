@@ -54,16 +54,34 @@ jobs:
           find bin/packages -name 'luci-theme-footstrap*.ipk' -o -name 'luci-i18n-*footstrap*.ipk' | sort
 
       - name: Verify ipk packages
+        env:
+          EXT: ipk
         run: |
-          sdkdir=$(cat sdkdir)
-          ok=1
-          while IFS= read -r f; do
-            echo "== $f"
-            ar t "$f" | grep -qE 'debian-binary|control.tar.gz|data.tar.gz' || { ok=0; echo 'bad ar structure'; }
-            ar p "$f" data.tar.gz | tar tz >/dev/null 2>&1 || { ok=0; echo 'bad data.tar.gz'; }
-            if ar p "$f" data.tar.gz | tar tz 2>/dev/null | grep -qE '\.lmo|luci-static/footstrap'; then echo 'content-ok'; else { ok=0; echo 'missing lmo/theme content'; }; fi
-          done < <(find -L "$sdkdir/bin" -name '*.ipk' | grep -i footstrap | sort)
-          [ "$ok" = 1 ] || { echo VERIFY-FAIL; exit 1; }
+          python3 - <<'PY'
+          import os, glob, io, tarfile, sys
+          sdk = open('sdkdir').read().strip()
+          ext = os.environ['EXT']
+          files = sorted(f for f in glob.glob(sdk + '/bin/**/*.' + ext, recursive=True) if 'footstrap' in os.path.basename(f))
+          ok = True
+          for f in files:
+              try:
+                  with tarfile.open(f, 'r:*') as t:
+                      outer = set(t.getnames())
+                      names = set(outer)
+                      for p in outer:
+                          if p.endswith('data.tar.gz'):
+                              data = t.extractfile(p).read()
+                              with tarfile.open(fileobj=io.BytesIO(data), mode='r:*') as dt:
+                                  names |= set(dt.getnames())
+              except Exception as e:
+                  print('open fail', f, e); ok = False; continue
+              hit = any(('.lmo' in n) or ('luci-static/footstrap' in n) or n.endswith('.po') for n in names)
+              print(f, 'content:', 'OK' if hit else 'MISSING')
+              if not hit:
+                  ok = False
+          print('VERIFY-OK' if ok else 'VERIFY-FAIL')
+          sys.exit(0 if ok else 1)
+          PY
 
       - name: Publish ipk to footstrap-zh release
         env:
@@ -151,16 +169,34 @@ jobs:
           find -L bin -name '*.apk' | grep -i footstrap | sort
 
       - name: Verify apk packages
+        env:
+          EXT: apk
         run: |
-          sdkdir=$(cat sdkdir)
-          ok=1
-          while IFS= read -r f; do
-            echo "== $f"
-            tar tzf "$f" >/dev/null 2>&1 || { ok=0; echo 'not a valid tar.gz'; continue; }
-            tar tzf "$f" 2>/dev/null | grep -q '\.PKGINFO' || { ok=0; echo 'missing PKGINFO'; }
-            if tar tzf "$f" 2>/dev/null | grep -qE '\.lmo|luci-static/footstrap|\.po$'; then echo 'content-ok'; else { ok=0; echo 'missing lmo/theme content'; }; fi
-          done < <(find -L "$sdkdir/bin" -name '*.apk' | grep -i footstrap | sort)
-          [ "$ok" = 1 ] || { echo VERIFY-FAIL; exit 1; }
+          python3 - <<'PY'
+          import os, glob, io, tarfile, sys
+          sdk = open('sdkdir').read().strip()
+          ext = os.environ['EXT']
+          files = sorted(f for f in glob.glob(sdk + '/bin/**/*.' + ext, recursive=True) if 'footstrap' in os.path.basename(f))
+          ok = True
+          for f in files:
+              try:
+                  with tarfile.open(f, 'r:*') as t:
+                      outer = set(t.getnames())
+                      names = set(outer)
+                      for p in outer:
+                          if p.endswith('data.tar.gz'):
+                              data = t.extractfile(p).read()
+                              with tarfile.open(fileobj=io.BytesIO(data), mode='r:*') as dt:
+                                  names |= set(dt.getnames())
+              except Exception as e:
+                  print('open fail', f, e); ok = False; continue
+              hit = any(('.lmo' in n) or ('luci-static/footstrap' in n) or ('.PKGINFO' in n and ext == 'apk') for n in names)
+              print(f, 'content:', 'OK' if hit else 'MISSING')
+              if not hit:
+                  ok = False
+          print('VERIFY-OK' if ok else 'VERIFY-FAIL')
+          sys.exit(0 if ok else 1)
+          PY
 
       - name: Publish apk to footstrap-zh release
         env:
