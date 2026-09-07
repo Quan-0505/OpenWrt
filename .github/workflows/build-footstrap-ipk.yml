@@ -1,4 +1,4 @@
-name: Build footstrap zh ipk (24.10 SDK)
+name: Build footstrap zh ipk+apk
 
 on:
   workflow_dispatch:
@@ -25,7 +25,6 @@ jobs:
           curl -sL -o sdk.tar.zst "https://downloads.openwrt.org/releases/${base}/targets/x86/64/${sdk}"
           tar --zstd -xf sdk.tar.zst
           ls -d openwrt-sdk-*/ > sdkdir
-          cat sdkdir
 
       - name: Setup feeds and package
         run: |
@@ -36,10 +35,12 @@ jobs:
           git clone -q --depth 1 https://github.com/VizzleTF/luci-theme-footstrap _t
           mkdir -p package/luci-theme-footstrap
           cp -r _t/luci-theme-footstrap/* package/luci-theme-footstrap/
-          mkdir -p package/luci-theme-footstrap/po/zh_Hans
-          cp ../PATCH/theme-footstrap-zh/zh_Hans/footstrap.po package/luci-theme-footstrap/po/zh_Hans/footstrap.po
+          for lang in zh-cn zh_Hans; do
+            mkdir -p package/luci-theme-footstrap/po/$lang
+            cp ../PATCH/theme-footstrap-zh/zh_Hans/footstrap.po package/luci-theme-footstrap/po/$lang/footstrap.po
+          done
           echo 'CONFIG_PACKAGE_luci-theme-footstrap=y' > .config
-          echo 'CONFIG_PACKAGE_luci-i18n-footstrap-zh_Hans=y' >> .config
+          echo 'CONFIG_PACKAGE_luci-i18n-footstrap-zh-cn=y' >> .config
           echo 'CONFIG_PACKAGE_luci-theme-bootstrap=n' >> .config
           make defconfig >/dev/null 2>&1
 
@@ -49,39 +50,33 @@ jobs:
         run: |
           sdkdir=$(cat sdkdir)
           cd $sdkdir
-          make package/luci-theme-footstrap/compile package/luci-i18n-footstrap-zh_Hans/compile -j$(nproc) V=s 2>&1 | tail -30
+          make package/luci-theme-footstrap/compile package/luci-i18n-footstrap-zh-cn/compile -j$(nproc) V=s 2>&1 | tail -30
           echo '--- results ---'
-          find bin/packages -name 'luci-theme-footstrap*.ipk' -o -name 'luci-i18n-*footstrap*.ipk' | sort
+          find -L bin -type f \( -name 'luci-theme-footstrap*.ipk' -o -name 'luci-i18n-*footstrap*.ipk' \) | sort
 
       - name: Verify ipk packages
-        env:
-          EXT: ipk
         run: |
-          python3 - <<'PY'
-          import os, glob, io, tarfile, sys
-          sdk = open('sdkdir').read().strip()
-          ext = os.environ['EXT']
-          files = sorted(f for f in glob.glob(sdk + '/bin/**/*.' + ext, recursive=True) if 'footstrap' in os.path.basename(f))
-          ok = True
-          for f in files:
-              try:
-                  with tarfile.open(f, 'r:*') as t:
-                      outer = set(t.getnames())
-                      names = set(outer)
-                      for p in outer:
-                          if p.endswith('data.tar.gz'):
-                              data = t.extractfile(p).read()
-                              with tarfile.open(fileobj=io.BytesIO(data), mode='r:*') as dt:
-                                  names |= set(dt.getnames())
-              except Exception as e:
-                  print('open fail', f, e); ok = False; continue
-              hit = any(('.lmo' in n) or ('luci-static/footstrap' in n) or n.endswith('.po') for n in names)
-              print(f, 'content:', 'OK' if hit else 'MISSING')
-              if not hit:
-                  ok = False
-          print('VERIFY-OK' if ok else 'VERIFY-FAIL')
-          sys.exit(0 if ok else 1)
-          PY
+          sdkdir=$(cat sdkdir)
+          ok=1
+          lst() { f="$1"; h=$(head -c4 "$f" | od -An -tx1 | tr -d ' \n'); case "$h" in
+            1f8b*) tar tzf "$f" 2>/dev/null;;
+            28b52ffd) tar --zstd -tf "$f" 2>/dev/null;;
+            fd377a58) tar tJf "$f" 2>/dev/null;;
+            *) tar tf "$f" 2>/dev/null;; esac; }
+          while IFS= read -r f; do
+            echo "== $f"
+            L=$(lst "$f"); [ -n "$L" ] || { ok=0; echo 'unreadable archive'; continue; }
+            hit=$(echo "$L" | grep -qE '\.lmo$|luci-static/footstrap|data\.tar\.gz' && echo 1 || echo 0)
+            if echo "$L" | grep -q 'data\.tar\.gz'; then
+              if echo "$L" | grep -qE '\.lmo$|luci-static/footstrap'; then hit=1; fi
+              IN=$(tar --zstd -tf "$f" data.tar.gz 2>/dev/null || tar tzf "$f" data.tar.gz 2>/dev/null)
+              IN=$(echo "$IN" | tar tz 2>/dev/null || true)
+              echo "$IN" | grep -qE '\.lmo$|luci-static/footstrap' && hit=1
+            fi
+            [ "$hit" = 1 ] && echo 'content-ok' || { ok=0; echo 'content MISSING'; }
+          done < <(find -L "$sdkdir/bin" -type f \( -name '*.ipk' \) | grep -i footstrap | sort)
+          [ "$ok" = 1 ] || { echo VERIFY-FAIL; exit 1; }
+          echo VERIFY-OK
 
       - name: Publish ipk to footstrap-zh release
         env:
@@ -105,7 +100,7 @@ jobs:
                       return json.loads(rb) if rb else None
               except urllib.error.HTTPError as e:
                   print('HTTP', e.code, host + path, e.read()[:200]); return None
-          hits = glob.glob(sdkdir + '/bin/packages/**/*footstrap*.ipk', recursive=True)
+          hits = glob.glob(sdkdir + '/bin/**/*footstrap*.ipk', recursive=True)
           hits = [h for h in hits if ('luci-theme-footstrap_1' in os.path.basename(h) or 'zh-cn' in os.path.basename(h))]
           hits = sorted(set(hits))
           print('ipks:', hits)
@@ -117,7 +112,7 @@ jobs:
           rid = rel['id']
           for f in hits:
               name = os.path.basename(f)
-              api('/releases/%d/assets?name=%s' % (rid, urllib.parse.quote(name)), 'POST', open(f, 'rb').read(), 'application/vnd.debian.binary-package', host='uploads.github.com')
+              api('/releases/%d/assets?name=%s' % (rid, urllib.parse.quote(name)), 'POST', open(f, 'rb').read(), 'application/octet-stream', host='uploads.github.com')
               print('uploaded', name)
           PYEOF
 
@@ -140,7 +135,6 @@ jobs:
           curl -sL -o sdk.tar.zst "https://downloads.openwrt.org/snapshots/targets/x86/64/${sdk}"
           tar --zstd -xf sdk.tar.zst
           ls -d openwrt-sdk-*/ > sdkdir
-          cat sdkdir
 
       - name: Setup feeds and package
         run: |
@@ -151,10 +145,12 @@ jobs:
           git clone -q --depth 1 https://github.com/VizzleTF/luci-theme-footstrap _t
           mkdir -p package/luci-theme-footstrap
           cp -r _t/luci-theme-footstrap/* package/luci-theme-footstrap/
-          mkdir -p package/luci-theme-footstrap/po/zh_Hans
-          cp ../PATCH/theme-footstrap-zh/zh_Hans/footstrap.po package/luci-theme-footstrap/po/zh_Hans/footstrap.po
+          for lang in zh-cn zh_Hans; do
+            mkdir -p package/luci-theme-footstrap/po/$lang
+            cp ../PATCH/theme-footstrap-zh/zh_Hans/footstrap.po package/luci-theme-footstrap/po/$lang/footstrap.po
+          done
           echo 'CONFIG_PACKAGE_luci-theme-footstrap=y' > .config
-          echo 'CONFIG_PACKAGE_luci-i18n-footstrap-zh_Hans=y' >> .config
+          echo 'CONFIG_PACKAGE_luci-i18n-footstrap-zh-cn=y' >> .config
           echo 'CONFIG_PACKAGE_luci-theme-bootstrap=n' >> .config
           make defconfig >/dev/null 2>&1
 
@@ -164,39 +160,26 @@ jobs:
         run: |
           sdkdir=$(cat sdkdir)
           cd $sdkdir
-          make package/luci-theme-footstrap/compile package/luci-i18n-footstrap-zh_Hans/compile -j$(nproc) V=s 2>&1 | tail -30
+          make package/luci-theme-footstrap/compile package/luci-i18n-footstrap-zh-cn/compile -j$(nproc) V=s 2>&1 | tail -30
           echo '--- results ---'
-          find -L bin -name '*.apk' | grep -i footstrap | sort
+          find -L bin -type f \( -name 'luci-theme-footstrap*.apk' -o -name 'luci-i18n-*footstrap*.apk' \) | sort
 
       - name: Verify apk packages
-        env:
-          EXT: apk
         run: |
-          python3 - <<'PY'
-          import os, glob, io, tarfile, sys
-          sdk = open('sdkdir').read().strip()
-          ext = os.environ['EXT']
-          files = sorted(f for f in glob.glob(sdk + '/bin/**/*.' + ext, recursive=True) if 'footstrap' in os.path.basename(f))
-          ok = True
-          for f in files:
-              try:
-                  with tarfile.open(f, 'r:*') as t:
-                      outer = set(t.getnames())
-                      names = set(outer)
-                      for p in outer:
-                          if p.endswith('data.tar.gz'):
-                              data = t.extractfile(p).read()
-                              with tarfile.open(fileobj=io.BytesIO(data), mode='r:*') as dt:
-                                  names |= set(dt.getnames())
-              except Exception as e:
-                  print('open fail', f, e); ok = False; continue
-              hit = any(('.lmo' in n) or ('luci-static/footstrap' in n) or ('.PKGINFO' in n and ext == 'apk') for n in names)
-              print(f, 'content:', 'OK' if hit else 'MISSING')
-              if not hit:
-                  ok = False
-          print('VERIFY-OK' if ok else 'VERIFY-FAIL')
-          sys.exit(0 if ok else 1)
-          PY
+          sdkdir=$(cat sdkdir)
+          ok=1
+          lst() { f="$1"; h=$(head -c4 "$f" | od -An -tx1 | tr -d ' \n'); case "$h" in
+            1f8b*) tar tzf "$f" 2>/dev/null;;
+            28b52ffd) tar --zstd -tf "$f" 2>/dev/null;;
+            fd377a58) tar tJf "$f" 2>/dev/null;;
+            *) tar tf "$f" 2>/dev/null;; esac; }
+          while IFS= read -r f; do
+            echo "== $f"
+            L=$(lst "$f"); [ -n "$L" ] || { ok=0; echo 'unreadable archive'; continue; }
+            echo "$L" | grep -qE '\.PKGINFO|luci-static/footstrap|\.lmo$' && echo 'content-ok' || { ok=0; echo 'content MISSING'; }
+          done < <(find -L "$sdkdir/bin" -type f \( -name '*.apk' \) | grep -i footstrap | sort)
+          [ "$ok" = 1 ] || { echo VERIFY-FAIL; exit 1; }
+          echo VERIFY-OK
 
       - name: Publish apk to footstrap-zh release
         env:
@@ -221,7 +204,7 @@ jobs:
               except urllib.error.HTTPError as e:
                   print('HTTP', e.code, host + path, e.read()[:200]); return None
           hits = glob.glob(sdkdir + '/bin/**/*footstrap*.apk', recursive=True)
-          hits = [h for h in hits if ('luci-theme-footstrap_1' in os.path.basename(h) or 'zh' in os.path.basename(h))]
+          hits = [h for h in hits if ('luci-theme-footstrap' in os.path.basename(h) and '.lsp' not in os.path.basename(h)) or ('zh-cn' in os.path.basename(h) or 'zh_Hans' in os.path.basename(h))]
           hits = sorted(set(hits))
           print('apks:', hits)
           if not hits:
