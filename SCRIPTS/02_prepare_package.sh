@@ -178,6 +178,36 @@ cp -f ../PATCH/theme-footstrap-zh/zh_Hans/footstrap.po ./package/new/luci-theme-
 rm -rf ./package/new/luci-app-daed
 rm -rf ./package/new/daed
 cp -rf ../PATCH/daed-pkg/daed ./package/new/daed
+# Kernel features required by daed (DaedNext Rust aya eBPF): veth peer + clsact tc attach + BTF.
+# Append directly to kernel config fragments (seed KERNEL_* symbols did not reach the kernel
+# .config on these targets). '=y' after existing '=m' lines wins during oldconfig.
+KERNEL_DAE_OPS="
+CONFIG_DEBUG_INFO=y
+CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y
+CONFIG_DEBUG_INFO_BTF=y
+CONFIG_BPF=y
+CONFIG_BPF_SYSCALL=y
+CONFIG_BPF_JIT=y
+CONFIG_BPF_JIT_ALWAYS_ON=y
+CONFIG_VETH=y
+CONFIG_NET_SCH_INGRESS=y
+CONFIG_NET_CLS_ACT=y
+CONFIG_NET_CLS_BPF=y
+"
+for f in $(find target/linux -maxdepth 4 -name 'config-6.12' 2>/dev/null); do
+  if [ -f "$f" ]; then
+    while IFS= read -r ln; do
+      [ -z "$ln" ] && continue
+      key="${ln%%=*}"
+      sed -i "/^${key//\//\\/}=/d" "$f"
+      echo "$ln" >> "$f"
+    done <<EOF
+$KERNEL_DAE_OPS
+EOF
+    echo "kernel dae opts appended to $f"
+  fi
+done
+
 
 ### 获取额外的 LuCI 应用、主题和依赖 ###
 # RK
