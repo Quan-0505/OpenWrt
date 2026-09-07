@@ -90,3 +90,88 @@ jobs:
               api('/releases/%d/assets?name=%s' % (rid, urllib.parse.quote(name)), 'POST', open(f, 'rb').read(), 'application/vnd.debian.binary-package', host='uploads.github.com')
               print('uploaded', name)
           PYEOF
+
+  apk:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@main
+        with:
+          ref: 25.12
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pick snapshot SDK (apk)
+        run: |
+          sdk=$(curl -s https://downloads.openwrt.org/snapshots/targets/x86/64/ | grep -oE 'openwrt-sdk-x86-64[^"<]+\.tar\.zst' | head -1)
+          echo "sdk=$sdk"
+          command -v zstd >/dev/null || sudo apt-get -y -qq install zstd
+          curl -sL -o sdk.tar.zst "https://downloads.openwrt.org/snapshots/targets/x86/64/${sdk}"
+          tar --zstd -xf sdk.tar.zst
+          ls -d openwrt-sdk-*/ > sdkdir
+          cat sdkdir
+
+      - name: Setup feeds and package
+        run: |
+          sdkdir=$(cat sdkdir)
+          cd $sdkdir
+          ./scripts/feeds update -a >/dev/null 2>&1
+          ./scripts/feeds install -a >/dev/null 2>&1
+          git clone -q --depth 1 https://github.com/VizzleTF/luci-theme-footstrap _t
+          mkdir -p package/luci-theme-footstrap
+          cp -r _t/luci-theme-footstrap/* package/luci-theme-footstrap/
+          mkdir -p package/luci-theme-footstrap/po/zh_Hans
+          cp ../PATCH/theme-footstrap-zh/zh_Hans/footstrap.po package/luci-theme-footstrap/po/zh_Hans/footstrap.po
+          echo 'CONFIG_PACKAGE_luci-theme-footstrap=y' > .config
+          echo 'CONFIG_PACKAGE_luci-i18n-footstrap-zh_Hans=y' >> .config
+          echo 'CONFIG_PACKAGE_luci-theme-bootstrap=n' >> .config
+          make defconfig >/dev/null 2>&1
+
+      - name: Compile apk packages
+        env:
+          FOOTSTRAP_VERSION: 1.0.0
+        run: |
+          sdkdir=$(cat sdkdir)
+          cd $sdkdir
+          make package/luci-theme-footstrap/compile package/luci-i18n-footstrap-zh_Hans/compile -j$(nproc) V=s 2>&1 | tail -30
+          echo '--- results ---'
+          find -L bin -name '*.apk' | grep -i footstrap | sort
+
+      - name: Publish apk to footstrap-zh release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 - <<'PYEOF'
+          import glob, json, os, urllib.request, urllib.parse
+          repo = os.environ['GITHUB_REPOSITORY']; tok = os.environ['GITHUB_TOKEN']
+          sdkdir = open('sdkdir').read().strip()
+          def api(path, method='GET', body=None, ctype=None, host='api.github.com'):
+              headers = {'Authorization': 'Bearer ' + tok, 'User-Agent': 'dsh', 'Accept': 'application/vnd.github+json'}
+              data = None
+              if ctype == 'json':
+                  data = json.dumps(body).encode(); headers['Content-Type'] = 'application/json'
+              elif ctype:
+                  data = body; headers['Content-Type'] = ctype
+              r = urllib.request.Request('https://' + host + '/repos/' + repo + path, method=method, headers=headers, data=data)
+              try:
+                  with urllib.request.urlopen(r, timeout=300) as resp:
+                      rb = resp.read()
+                      return json.loads(rb) if rb else None
+              except urllib.error.HTTPError as e:
+                  print('HTTP', e.code, host + path, e.read()[:200]); return None
+          hits = glob.glob(sdkdir + '/bin/**/*footstrap*.apk', recursive=True)
+          hits = [h for h in hits if ('luci-theme-footstrap_1' in os.path.basename(h) or 'zh' in os.path.basename(h))]
+          hits = sorted(set(hits))
+          print('apks:', hits)
+          if not hits:
+              raise SystemExit(1)
+          rel = api('/releases/tags/footstrap-zh')
+          if not rel or 'id' not in rel:
+              rel = api('/releases', 'POST', {'tag_name': 'footstrap-zh', 'name': 'luci-theme-footstrap 中文版 (ipk/apk)', 'body': 'luci-theme-footstrap + 自译中文语言包。', 'draft': False, 'prerelease': False}, 'json')
+          rid = rel['id']
+          for f in hits:
+              name = os.path.basename(f)
+              api('/releases/%d/assets?name=%s' % (rid, urllib.parse.quote(name)), 'POST', open(f, 'rb').read(), 'application/octet-stream', host='uploads.github.com')
+              print('uploaded', name)
+          PYEOF
