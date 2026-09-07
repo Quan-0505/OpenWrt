@@ -56,24 +56,21 @@ jobs:
 
       - name: Verify ipk packages
         run: |
+          set +e
           sdkdir=$(cat sdkdir)
           ok=1
-          lst() { f="$1"; h=$(head -c4 "$f" | od -An -tx1 | tr -d ' \n'); case "$h" in
-            1f8b*) tar tzf "$f" 2>/dev/null;;
-            28b52ffd) tar --zstd -tf "$f" 2>/dev/null;;
-            fd377a58) tar tJf "$f" 2>/dev/null;;
-            *) tar tf "$f" 2>/dev/null;; esac; }
           while IFS= read -r f; do
             echo "== $f"
-            L=$(lst "$f"); [ -n "$L" ] || { ok=0; echo 'unreadable archive'; continue; }
-            hit=$(echo "$L" | grep -qE '\.lmo$|luci-static/footstrap|data\.tar\.gz' && echo 1 || echo 0)
-            if echo "$L" | grep -q 'data\.tar\.gz'; then
-              if echo "$L" | grep -qE '\.lmo$|luci-static/footstrap'; then hit=1; fi
-              IN=$(tar --zstd -tf "$f" data.tar.gz 2>/dev/null || tar tzf "$f" data.tar.gz 2>/dev/null)
-              IN=$(echo "$IN" | tar tz 2>/dev/null || true)
-              echo "$IN" | grep -qE '\.lmo$|luci-static/footstrap' && hit=1
+            L=$(tar -tf "$f" 2>/dev/null)
+            if [ -z "$L" ]; then echo 'unreadable archive'; ok=0; continue; fi
+            hit=0
+            echo "$L" | grep -qE '\.lmo$|luci-static/footstrap' && hit=1
+            if echo "$L" | grep -q 'data.tar.gz'; then
+              d=$(tar -xOf "$f" data.tar.gz 2>/dev/null)
+              inner=$(printf '%s' "$d" | tar -tf - 2>/dev/null)
+              echo "$inner" | grep -qE '\.lmo$|luci-static/footstrap' && hit=1
             fi
-            [ "$hit" = 1 ] && echo 'content-ok' || { ok=0; echo 'content MISSING'; }
+            [ "$hit" = 1 ] && echo 'content-ok' || { echo 'content MISSING'; ok=0; }
           done < <(find -L "$sdkdir/bin" -type f \( -name '*.ipk' \) | grep -i footstrap | sort)
           [ "$ok" = 1 ] || { echo VERIFY-FAIL; exit 1; }
           echo VERIFY-OK
@@ -166,17 +163,14 @@ jobs:
 
       - name: Verify apk packages
         run: |
+          set +e
           sdkdir=$(cat sdkdir)
           ok=1
-          lst() { f="$1"; h=$(head -c4 "$f" | od -An -tx1 | tr -d ' \n'); case "$h" in
-            1f8b*) tar tzf "$f" 2>/dev/null;;
-            28b52ffd) tar --zstd -tf "$f" 2>/dev/null;;
-            fd377a58) tar tJf "$f" 2>/dev/null;;
-            *) tar tf "$f" 2>/dev/null;; esac; }
           while IFS= read -r f; do
             echo "== $f"
-            L=$(lst "$f"); [ -n "$L" ] || { ok=0; echo 'unreadable archive'; continue; }
-            echo "$L" | grep -qE '\.PKGINFO|luci-static/footstrap|\.lmo$' && echo 'content-ok' || { ok=0; echo 'content MISSING'; }
+            L=$(tar -tf "$f" 2>/dev/null)
+            if [ -z "$L" ]; then echo 'unreadable archive'; ok=0; continue; fi
+            echo "$L" | grep -qE '\.PKGINFO|luci-static/footstrap|\.lmo$' && echo 'content-ok' || { echo 'content MISSING'; ok=0; }
           done < <(find -L "$sdkdir/bin" -type f \( -name '*.apk' \) | grep -i footstrap | sort)
           [ "$ok" = 1 ] || { echo VERIFY-FAIL; exit 1; }
           echo VERIFY-OK
