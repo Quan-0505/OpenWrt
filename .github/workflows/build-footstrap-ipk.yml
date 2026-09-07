@@ -53,6 +53,18 @@ jobs:
           echo '--- results ---'
           find bin/packages -name 'luci-theme-footstrap*.ipk' -o -name 'luci-i18n-*footstrap*.ipk' | sort
 
+      - name: Verify ipk packages
+        run: |
+          sdkdir=$(cat sdkdir)
+          ok=1
+          while IFS= read -r f; do
+            echo "== $f"
+            ar t "$f" | grep -qE 'debian-binary|control.tar.gz|data.tar.gz' || { ok=0; echo 'bad ar structure'; }
+            ar p "$f" data.tar.gz | tar tz >/dev/null 2>&1 || { ok=0; echo 'bad data.tar.gz'; }
+            if ar p "$f" data.tar.gz | tar tz 2>/dev/null | grep -qE '\.lmo|luci-static/footstrap'; then echo 'content-ok'; else { ok=0; echo 'missing lmo/theme content'; }; fi
+          done < <(find -L "$sdkdir/bin" -name '*.ipk' | grep -i footstrap | sort)
+          [ "$ok" = 1 ] || { echo VERIFY-FAIL; exit 1; }
+
       - name: Publish ipk to footstrap-zh release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -137,6 +149,18 @@ jobs:
           make package/luci-theme-footstrap/compile package/luci-i18n-footstrap-zh_Hans/compile -j$(nproc) V=s 2>&1 | tail -30
           echo '--- results ---'
           find -L bin -name '*.apk' | grep -i footstrap | sort
+
+      - name: Verify apk packages
+        run: |
+          sdkdir=$(cat sdkdir)
+          ok=1
+          while IFS= read -r f; do
+            echo "== $f"
+            tar tzf "$f" >/dev/null 2>&1 || { ok=0; echo 'not a valid tar.gz'; continue; }
+            tar tzf "$f" 2>/dev/null | grep -q '\.PKGINFO' || { ok=0; echo 'missing PKGINFO'; }
+            if tar tzf "$f" 2>/dev/null | grep -qE '\.lmo|luci-static/footstrap|\.po$'; then echo 'content-ok'; else { ok=0; echo 'missing lmo/theme content'; }; fi
+          done < <(find -L "$sdkdir/bin" -name '*.apk' | grep -i footstrap | sort)
+          [ "$ok" = 1 ] || { echo VERIFY-FAIL; exit 1; }
 
       - name: Publish apk to footstrap-zh release
         env:
