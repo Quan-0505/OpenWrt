@@ -1,0 +1,118 @@
+name: Build footstrap APK for OpenWrt 25.12
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: footstrap-apk-25.12
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download latest stable 25.12 SDK
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y zstd gettext libncurses-dev
+          curl -fLsS --retry 3 https://downloads.openwrt.org/releases/ -o releases.html
+          release=$(grep -oE 'href="25\.12\.[0-9]+/"' releases.html | cut -d '"' -f2 | tr -d / | sort -Vu | tail -1)
+          test -n "$release"
+          base="https://downloads.openwrt.org/releases/$release/targets/x86/64"
+          curl -fLsS --retry 3 "$base/sha256sums" -o sha256sums
+          sdk=$(awk '{print $2}' sha256sums | sed 's/^\*//' | grep -E '^openwrt-sdk-.*\.tar\.zst$')
+          test "$(printf '%s\n' "$sdk" | wc -l)" -eq 1
+          curl -fL --retry 3 "$base/$sdk" -o "$sdk"
+          grep -F "$sdk" sha256sums | sha256sum -c -
+          mkdir sdk
+          tar --zstd -xf "$sdk" -C sdk --strip-components=1
+          echo "OPENWRT_RELEASE=$release" >> "$GITHUB_ENV"
+
+      - name: Prepare matching theme and Chinese translation
+        run: |
+          set -euo pipefail
+          # Match the source pinned by the firmware package preparation script.
+          commit=$(sed -nE 's/.*fetch -q --depth 1 origin ([0-9a-f]{40}).*/\1/p' SCRIPTS/02_prepare_package.sh)
+          test "${#commit}" -eq 40
+          git init theme
+          git -C theme remote add origin https://github.com/VizzleTF/luci-theme-footstrap
+          git -C theme fetch --depth 1 origin "$commit"
+          git -C theme checkout --detach FETCH_HEAD
+          echo "FOOTSTRAP_COMMIT=$commit" >> "$GITHUB_ENV"
+          # Numeric, reproducible APK version derived from the pinned source date.
+          version=$(git -C theme show -s --format=%cd --date=format:%Y%m%d%H%M%S)
+          echo "FOOTSTRAP_VERSION=1.0.$version" >> "$GITHUB_ENV"
+          cd sdk
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          cp -a ../theme/luci-theme-footstrap package/
+          mkdir -p package/luci-theme-footstrap/po/zh_Hans
+          cp ../PATCH/theme-footstrap-zh/zh_Hans/footstrap.po package/luci-theme-footstrap/po/zh_Hans/
+          cat > .config <<'EOF'
+          CONFIG_ALL_NONSHARED=n
+          CONFIG_ALL_KMODS=n
+          CONFIG_ALL=n
+          CONFIG_LUCI_LANG_zh_Hans=y
+          CONFIG_PACKAGE_luci-theme-footstrap=m
+          CONFIG_PACKAGE_luci-i18n-footstrap-zh-cn=m
+          EOF
+          make defconfig
+          grep -q '^CONFIG_USE_APK=y' .config
+          grep -q '^CONFIG_PACKAGE_luci-i18n-footstrap-zh-cn=m' .config
+
+      - name: Compile theme and translation
+        working-directory: sdk
+        run: |
+          set -euo pipefail
+          # luci.mk builds language subpackages from the theme target itself.
+          make package/luci-theme-footstrap/compile -j"$(nproc)" V=s 2>&1 | tee ../footstrap-build.log
+
+      - name: Verify APK v3 payloads and collect packages
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts verify/theme verify/zh
+          mapfile -t themes < <(find -L sdk/bin -type f -name 'luci-theme-footstrap-*.apk' | sort -u)
+          mapfile -t langs < <(find -L sdk/bin -type f -name 'luci-i18n-footstrap-zh-cn-*.apk' | sort -u)
+          test "${#themes[@]}" -gt 0
+          test "${#langs[@]}" -gt 0
+          apk="$PWD/sdk/staging_dir/host/bin/apk"
+          "$apk" extract --allow-untrusted --destination "$PWD/verify/theme" "${themes[0]}"
+          "$apk" extract --allow-untrusted --destination "$PWD/verify/zh" "${langs[0]}"
+          test -s verify/theme/www/luci-static/footstrap/cascade.css
+          test -s verify/theme/usr/share/ucode/luci/template/themes/footstrap/header.ut
+          test -s verify/zh/usr/lib/lua/luci/i18n/footstrap.zh-cn.lmo
+          cp "${themes[0]}" "${langs[0]}" artifacts/
+          printf 'OpenWrt SDK: %s\nTheme commit: %s\nRepository commit: %s\n' "$OPENWRT_RELEASE" "$FOOTSTRAP_COMMIT" "$GITHUB_SHA" > artifacts/footstrap-apk-build-info.txt
+          (cd artifacts && sha256sum *.apk > footstrap-apk-sha256sums.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: footstrap-openwrt-25.12-apk
+          path: artifacts/
+          if-no-files-found: error
+
+      - name: Publish APKs alongside existing IPKs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view footstrap-zh >/dev/null
+          gh release upload footstrap-zh artifacts/* --clobber
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: footstrap-apk-debug
+          path: |
+            footstrap-build.log
+            sdk/.config
