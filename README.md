@@ -69,6 +69,20 @@ daed 面板: http://192.168.2.1:2023   # 无 LuCI 菜单，独立网页
 1. Actions → `R2S/R3S/R4S/X86-OpenWrt` 任一 **Run workflow**（只编该机型）；或 `OpenWrt-Matrix` 的 `targets` 填 `R2S,R3S,R4S,X86`（留空 = 全机型并行）。
 2. 冷编译约 3~5 小时/机型（已缓存下载源 dl）；发布到 `25.12.5` tag 并保留 run artifact 作为安全网。
 
+### 单独编译 footstrap 的 OpenWrt 25.12 APK
+
+Actions → **Build footstrap APK for OpenWrt 25.12** → **Run workflow**。
+该流程使用最新的 25.12 正式版 SDK，校验 SDK SHA-256，并使用与固件相同的 footstrap 源码提交及本仓库中文翻译。
+主题和简体中文语言包由同一个 LuCI 编译目标生成，使用 SDK 自带的 APK 工具解包检查后，发布到 [footstrap-zh](https://github.com/Quan-0505/OpenWrt/releases/tag/footstrap-zh)，同时保留 Actions artifact、构建来源和 SHA-256 文件；已有 24.10 IPK 保留。
+
+下载两个 `.apk` 文件并上传到路由器 `/tmp/` 后安装（SDK 本地签名未加入路由器信任库，因此指定 `--allow-untrusted`）：
+
+```sh
+apk add --allow-untrusted /tmp/luci-theme-footstrap-*.apk /tmp/luci-i18n-footstrap-zh-cn-*.apk
+```
+
+安装后可在 LuCI 的语言和界面设置中选择 Footstrap 和简体中文。
+
 ## 📄 许可
 
 [GNU General Public License v3.0](LICENSE)。上游 [QiuSimons/YAOF](https://github.com/QiuSimons/YAOF) GPL-3.0；[rust-daed](https://github.com/Quan-0505/rust-daed) AGPL-3.0。
