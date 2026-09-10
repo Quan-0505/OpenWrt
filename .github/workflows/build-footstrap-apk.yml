@@ -49,9 +49,8 @@ jobs:
           git -C theme fetch --depth 1 origin "$commit"
           git -C theme checkout --detach FETCH_HEAD
           echo "FOOTSTRAP_COMMIT=$commit" >> "$GITHUB_ENV"
-          # Numeric, reproducible APK version derived from the pinned source date.
-          version=$(git -C theme show -s --format=%cd --date=format:%Y%m%d%H%M%S)
-          echo "FOOTSTRAP_VERSION=1.0.$version" >> "$GITHUB_ENV"
+          # Keep package metadata and the published filename aligned with the IPK.
+          echo "FOOTSTRAP_VERSION=1.0.0" >> "$GITHUB_ENV"
           cd sdk
           ./scripts/feeds update -a
           ./scripts/feeds install -a
@@ -91,7 +90,8 @@ jobs:
           test -s verify/theme/www/luci-static/footstrap/cascade.css
           test -s verify/theme/usr/share/ucode/luci/template/themes/footstrap/header.ut
           test -s verify/zh/usr/lib/lua/luci/i18n/footstrap.zh-cn.lmo
-          cp "${themes[0]}" "${langs[0]}" artifacts/
+          cp "${themes[0]}" "artifacts/luci-theme-footstrap_${FOOTSTRAP_VERSION}-r1_all.apk"
+          cp "${langs[0]}" artifacts/
           printf 'OpenWrt SDK: %s\nTheme commit: %s\nRepository commit: %s\n' "$OPENWRT_RELEASE" "$FOOTSTRAP_COMMIT" "$GITHUB_SHA" > artifacts/footstrap-apk-build-info.txt
           (cd artifacts && sha256sum *.apk > footstrap-apk-sha256sums.txt)
 
@@ -107,7 +107,7 @@ jobs:
         run: |
           set -euo pipefail
           gh release view footstrap-zh >/dev/null
-          gh release upload footstrap-zh artifacts/* --clobber
+          gh release upload footstrap-zh artifacts/*.apk --clobber
 
       - uses: actions/upload-artifact@v4
         if: failure()
