@@ -73,12 +73,12 @@ daed 面板: http://192.168.2.1:2023   # 无 LuCI 菜单，独立网页
 
 Actions → **Build footstrap APK for OpenWrt 25.12** → **Run workflow**。
 该流程使用最新的 25.12 正式版 SDK，校验 SDK SHA-256，并使用与固件相同的 footstrap 源码提交及本仓库中文翻译。
-主题和简体中文语言包由同一个 LuCI 编译目标生成，使用 SDK 自带的 APK 工具解包检查后，发布到 [footstrap-zh](https://github.com/Quan-0505/OpenWrt/releases/tag/footstrap-zh)，同时保留 Actions artifact、构建来源和 SHA-256 文件；已有 24.10 IPK 保留。
+主题和简体中文语言包由同一个 LuCI 编译目标生成，使用 SDK 自带的 APK 工具解包检查后，仅将 APK 发布到 [footstrap-zh](https://github.com/Quan-0505/OpenWrt/releases/tag/footstrap-zh)。主题文件名为 `luci-theme-footstrap_1.0.0-r1_all.apk`，与 IPK 命名保持一致；构建来源和 SHA-256 文件仅保留在 Actions artifact 中，已有 24.10 IPK 保留。
 
 下载两个 `.apk` 文件并上传到路由器 `/tmp/` 后安装（SDK 本地签名未加入路由器信任库，因此指定 `--allow-untrusted`）：
 
 ```sh
-apk add --allow-untrusted /tmp/luci-theme-footstrap-*.apk /tmp/luci-i18n-footstrap-zh-cn-*.apk
+apk add --allow-untrusted /tmp/luci-theme-footstrap_*.apk /tmp/luci-i18n-footstrap-zh-cn-*.apk
 ```
 
 安装后可在 LuCI 的语言和界面设置中选择 Footstrap 和简体中文。
