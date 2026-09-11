@@ -69,6 +69,8 @@ daed 面板: http://192.168.2.1:2023   # 无 LuCI 菜单，独立网页
 1. Actions → `R2S/R3S/R4S/X86-OpenWrt` 任一 **Run workflow**（只编该机型）；或 `OpenWrt-Matrix` 的 `targets` 填 `R2S,R3S,R4S,X86`（留空 = 全机型并行）。
 2. 冷编译约 3~5 小时/机型（已缓存下载源 dl）；发布到 `25.12.5` tag 并保留 run artifact 作为安全网。
 
+固件流程只发布固件 ZIP；footstrap 独立安装包由单独的主题流程发布，主题附件冲突不会阻断固件发布。固件仍会正常编译并内置主题。
+
 ### 单独编译 footstrap 的 OpenWrt 25.12 APK
 
 Actions → **Build footstrap APK for OpenWrt 25.12** → **Run workflow**。
