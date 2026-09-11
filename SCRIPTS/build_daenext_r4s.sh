@@ -28,6 +28,14 @@ export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER="$GCC"
 export CC_aarch64_unknown_linux_musl="$GCC"
 export CXX_aarch64_unknown_linux_musl="${PREFIX}g++"
 export AR_aarch64_unknown_linux_musl="${PREFIX}ar"
+SYSROOT=$("$GCC" -print-sysroot)
+test -d "$SYSROOT"
+# Bindgen runs on the x86 build host; explicitly give it musl target headers.
+export BORING_BSSL_SYSROOT="$SYSROOT"
+export BINDGEN_EXTRA_CLANG_ARGS_aarch64_unknown_linux_musl="--sysroot=$SYSROOT"
+if [ -d "$SYSROOT/include" ]; then
+  export BINDGEN_EXTRA_CLANG_ARGS_aarch64_unknown_linux_musl="--sysroot=$SYSROOT -isystem $SYSROOT/include"
+fi
 export RUSTFLAGS='-C target-cpu=generic -C target-feature=+crt-static'
 export CARGO_BUILD_JOBS=2
 export CARGO_PROFILE_RELEASE_LTO=thin
