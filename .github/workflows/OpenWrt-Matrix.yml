@@ -218,6 +218,7 @@ jobs:
           ls -lh package/new/kixdns/prebuilt/kixdns
 
       - name: Fetch daed (rust-daed v3.1.1-sticky apk payload)
+        if: matrix.name != 'R4S'
         run: |
           set -e
           export DEV=$(echo "${{ matrix.name }}" | tr 'A-Z' 'a-z')
@@ -255,6 +256,11 @@ jobs:
           PYEOF
           ls -lh openwrt/package/new/daed/prebuilt-data/usr/bin/daed
 
+      - name: Select source-built DaeNext package for R4S
+        if: matrix.name == 'R4S'
+        run: |
+          cp PATCH/daenext-r4s/Makefile openwrt/package/new/daed/Makefile
+
       - name: QTMDFW4
         working-directory: ${{ github.workspace }}/openwrt
         run: |
@@ -278,6 +284,11 @@ jobs:
         working-directory: ${{ github.workspace }}/openwrt
         run: |
           make defconfig
+          if [ "${{ matrix.name }}" = R4S ]; then
+            grep -q '^CONFIG_KERNEL_DEBUG_INFO_BTF=y$' .config
+            grep -q '^# CONFIG_KERNEL_DEBUG_INFO_REDUCED is not set$' .config
+            grep -q '^CONFIG_PACKAGE_daed=y$' .config
+          fi
 
       - name: Get Architecture
         id: getarch
@@ -329,14 +340,35 @@ jobs:
           make -j$(($(nproc) + 1)) package/network/utils/nftables/refresh V=s
 
       # build_firmware
+      - name: Install Rust for DaeNext R4S
+        if: inputs.build_firmware && matrix.name == 'R4S'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-musl
+
+      - name: Build DaeNext and DaedNext 3.1.0 for R4S
+        if: inputs.build_firmware && matrix.name == 'R4S'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y cmake libclang-dev qemu-user
+          rustup toolchain install nightly --profile minimal --component rust-src
+          cargo install bpf-linker --version 0.10.3 --locked
+          sudo npm install -g pnpm@10.24.0
+          make -C openwrt -j2 toolchain/install V=s
+          bash SCRIPTS/build_daenext_r4s.sh
+
       - name: Compile Openwrt
         if: inputs.build_firmware
         working-directory: ${{ github.workspace }}/openwrt
         id: compileopenwrt
         continue-on-error: true
         run: |
-          IGNORE_ERRORS=1 make -j$(($(nproc) + 1))
-          echo $?
+          if [ "${{ matrix.name }}" = R4S ]; then
+            make -j$(($(nproc) + 1))
+          else
+            IGNORE_ERRORS=1 make -j$(($(nproc) + 1))
+          fi
       - name: If Error
         if: steps.compileopenwrt.outcome == 'failure'
         working-directory: ${{ github.workspace }}/openwrt
@@ -344,6 +376,21 @@ jobs:
           cat ./.config
           echo '================================================================'
           make -j1 V=s
+
+      - name: Verify R4S DaeNext image contents and kernel BTF
+        if: inputs.build_firmware && matrix.name == 'R4S'
+        run: |
+          set -euo pipefail
+          root=$(find openwrt/build_dir -type d -name root-rockchip -print -quit)
+          test -n "$root"
+          cmp "$root/usr/bin/daed" openwrt/package/new/daed/prebuilt-data/usr/bin/daed
+          python3 SCRIPTS/verify_daenext_assets.py "$root/usr/share/daed/web"
+          test -x "$root/etc/init.d/daed"
+          test -n "$(find "$root/etc/rc.d" -name '*daed' -print -quit)"
+          kernel=$(find openwrt/build_dir -path '*/linux-6.12*/vmlinux' -print -quit)
+          test -n "$kernel"
+          readelf -S "$kernel" | grep -q '\.BTF '
+          grep -q '^CONFIG_DEBUG_INFO_BTF=y$' "$(dirname "$kernel")/.config"
 
       - name: Organize files
         if: inputs.build_firmware
@@ -372,7 +419,7 @@ jobs:
           retention-days: 7
 
       - name: Clean stale release assets (this device)
-        if: inputs.build_firmware
+        if: inputs.build_firmware && matrix.name != 'R4S'
         env:
           PREFIX: ${{ env.artifact_prefix }}
           TAG: ${{ env.latest_release }}
@@ -409,8 +456,8 @@ jobs:
           name: OpenWRT-${{ env.latest_release }}
           allowUpdates: true
           prerelease: false
-          tag: ${{ env.latest_release }}
-          commit: "25.12"
+          tag: ${{ matrix.name == 'R4S' && format('{0}-daenext-{1}', env.latest_release, github.run_id) || env.latest_release }}
+          commit: ${{ github.sha }}
           replacesArtifacts: false
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: ./artifact/*.zip

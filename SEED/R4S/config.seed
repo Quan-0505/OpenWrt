@@ -9,6 +9,7 @@ CONFIG_DEVEL=y
 # Kernel BTF (required by daed/DaeNext aya eBPF loader)
 CONFIG_KERNEL_DEBUG_INFO=y
 CONFIG_KERNEL_DEBUG_INFO_BTF=y
+# CONFIG_KERNEL_DEBUG_INFO_REDUCED is not set
 # CONFIG_KERNEL_WERROR is not set
 CONFIG_KERNEL_BUILD_DOMAIN="buildhost"
 CONFIG_KERNEL_BUILD_USER="builder"
@@ -35,8 +36,11 @@ CONFIG_PACKAGE_kmod-lib-lzo=y
 CONFIG_PACKAGE_kmod-lib-zstd=y
 
 ### DAED ###
-# daed = DaeNext Rust 内核 + 预构建 daed Web UI（ksong008/DaeNext work/boringssl）
+# DaeNext Rust 核心与 DaedNext 3.1.0 WebUI 均从固定提交编译
 CONFIG_PACKAGE_daed=y
+# CONFIG_PACKAGE_luci-app-daed is not set
+# CONFIG_PACKAGE_daed-next is not set
+# CONFIG_PACKAGE_luci-app-daed-next is not set
 
 ### KIXDNS ###
 # kixdns = Rust DNS 分流转发器 + LuCI（JohnsonRan/luci-app-kixdns，CI 预编译 musl 静态版）
