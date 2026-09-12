@@ -394,10 +394,14 @@ jobs:
           set -euo pipefail
           root=$(find openwrt/build_dir -type d -name root-rockchip -print -quit)
           test -n "$root"
-          cmp "$root/usr/bin/daed" openwrt/package/new/daed/prebuilt-data/usr/bin/daed
-          python3 SCRIPTS/verify_daenext_assets.py "$root/usr/share/daed/web"
+          # R4S builds DaeNext from source, so the installed binary must NOT be byte-identical
+          # to the prebuilt payload; assert it is a real aarch64 ELF with the product CLI instead.
+          test -x "$root/usr/bin/daed"
+          file "$root/usr/bin/daed" | grep -q 'ELF 64-bit.*ARM aarch64'
+          strings -a "$root/usr/bin/daed" | grep -q 'daed run -c'
           test -x "$root/etc/init.d/daed"
           test -n "$(find "$root/etc/rc.d" -name '*daed' -print -quit)"
+          python3 SCRIPTS/verify_daenext_assets.py "$root/usr/share/daed/web"
           kernel=$(find openwrt/build_dir -path '*/linux-6.12*/vmlinux' -print -quit)
           test -n "$kernel"
           readelf -S "$kernel" | grep -q '\.BTF '
