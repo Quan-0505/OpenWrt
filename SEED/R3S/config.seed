@@ -35,6 +35,10 @@ CONFIG_PACKAGE_kmod-lib-lzo=y
 CONFIG_PACKAGE_kmod-lib-zstd=y
 
 ### DAED ###
+# daed eBPF 运行所需宿主工具（tc/clsact、bpftool、ipset）
+CONFIG_PACKAGE_tc-full=y
+CONFIG_PACKAGE_bpftool-minimal=y
+CONFIG_PACKAGE_ipset=y
 # daed = DaeNext Rust 内核 + 预构建 daed Web UI（ksong008/DaeNext work/boringssl）
 CONFIG_PACKAGE_daed=y
 
