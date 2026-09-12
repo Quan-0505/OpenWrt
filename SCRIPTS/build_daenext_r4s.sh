@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+trap 'printf "DaeNext build failed at line %s: %s\n" "$LINENO" "$BASH_COMMAND" >&2' ERR
 
 # Run from the firmware repository root after OpenWrt toolchain/install.
 ROOT=$(pwd)
@@ -19,23 +20,16 @@ checkout_pinned() {
 checkout_pinned https://github.com/ksong008/DaeNext.git "$CORE_REF" "$ROOT/daenext-core"
 checkout_pinned https://github.com/ksong008/DaedNext.git "$WEB_REF" "$ROOT/daenext-web"
 
-GCC=$(find "$ROOT/openwrt/staging_dir" -path '*/bin/aarch64-openwrt-linux-musl-gcc' -print -quit)
-test -n "$GCC"
-PREFIX=${GCC%gcc}
+source "$ROOT/SCRIPTS/daenext_toolchain.sh"
 export STAGING_DIR="$ROOT/openwrt/staging_dir"
 export PATH="$(dirname "$GCC"):$PATH"
 export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER="$GCC"
 export CC_aarch64_unknown_linux_musl="$GCC"
 export CXX_aarch64_unknown_linux_musl="${PREFIX}g++"
 export AR_aarch64_unknown_linux_musl="${PREFIX}ar"
-SYSROOT=$("$GCC" -print-sysroot)
-test -d "$SYSROOT"
 # Bindgen runs on the x86 build host; explicitly give it musl target headers.
 export BORING_BSSL_SYSROOT="$SYSROOT"
-export BINDGEN_EXTRA_CLANG_ARGS_aarch64_unknown_linux_musl="--sysroot=$SYSROOT"
-if [ -d "$SYSROOT/include" ]; then
-  export BINDGEN_EXTRA_CLANG_ARGS_aarch64_unknown_linux_musl="--sysroot=$SYSROOT -isystem $SYSROOT/include"
-fi
+export BINDGEN_EXTRA_CLANG_ARGS_aarch64_unknown_linux_musl="--sysroot=$SYSROOT -isystem $TARGET_INCLUDE"
 export RUSTFLAGS='-C target-cpu=generic -C target-feature=+crt-static'
 export CARGO_BUILD_JOBS=2
 export CARGO_PROFILE_RELEASE_LTO=thin
