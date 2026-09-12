@@ -259,6 +259,7 @@ jobs:
       - name: Select source-built DaeNext package for R4S
         if: matrix.name == 'R4S'
         run: |
+          python3 SCRIPTS/test_daenext_toolchain.py
           cp PATCH/daenext-r4s/Makefile openwrt/package/new/daed/Makefile
 
       - name: QTMDFW4
@@ -346,7 +347,7 @@ jobs:
         with:
           targets: aarch64-unknown-linux-musl
 
-      - name: Build DaeNext and DaedNext 3.1.0 for R4S
+      - name: Install native build dependencies for DaeNext R4S
         if: inputs.build_firmware && matrix.name == 'R4S'
         run: |
           set -euo pipefail
@@ -355,7 +356,17 @@ jobs:
           rustup toolchain install nightly --profile minimal --component rust-src
           cargo install bpf-linker --version 0.10.3 --locked
           sudo npm install -g pnpm@10.24.0
+
+      - name: Build OpenWrt toolchain for DaeNext R4S
+        if: inputs.build_firmware && matrix.name == 'R4S'
+        run: |
+          set -euo pipefail
           make -C openwrt -j2 toolchain/install V=s
+
+      - name: Build DaeNext and DaedNext 3.1.0 for R4S
+        if: inputs.build_firmware && matrix.name == 'R4S'
+        run: |
+          set -euo pipefail
           bash SCRIPTS/build_daenext_r4s.sh
 
       - name: Compile Openwrt
