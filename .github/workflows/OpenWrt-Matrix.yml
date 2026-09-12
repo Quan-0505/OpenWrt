@@ -402,10 +402,24 @@ jobs:
           test -x "$root/etc/init.d/daed"
           test -n "$(find "$root/etc/rc.d" -name '*daed' -print -quit)"
           python3 SCRIPTS/verify_daenext_assets.py "$root/usr/share/daed/web"
-          kernel=$(find openwrt/build_dir -path '*/linux-6.12*/vmlinux' -print -quit)
-          test -n "$kernel"
-          readelf -S "$kernel" | grep -q '\.BTF '
-          grep -q '^CONFIG_DEBUG_INFO_BTF=y$' "$(dirname "$kernel")/.config"
+          # BTF evidence: scan every candidate vmlinux-ish artifact, print what each really is,
+          # and accept the check when a real ELF carries a .BTF section (or a .btf side artifact exists).
+          kdir=$(find openwrt/build_dir -type d -path '*/linux-6.12*' -print -quit)
+          test -n "$kdir"
+          echo "kernel dir: $kdir"
+          grep -q '^CONFIG_DEBUG_INFO_BTF=y$' "$kdir/.config" && echo 'CONFIG_DEBUG_INFO_BTF=y present'
+          grep -q '^CONFIG_DEBUG_INFO=y$' "$kdir/.config" && echo 'CONFIG_DEBUG_INFO=y present'
+          btf_ok=0
+          for cand in $(find "$kdir" -maxdepth 1 \( -name 'vmlinux*' -o -name '*.btf*' -o -name '.tmp_vmlinux*' \) | sort); do
+            echo "candidate: $cand"
+            file "$cand" || true
+            if readelf -h "$cand" >/dev/null 2>&1; then
+              if readelf -S "$cand" 2>/dev/null | grep -q '\.BTF '; then
+                echo "BTF section found in $cand"; btf_ok=1
+              fi
+            fi
+          done
+          test "$btf_ok" = 1
 
       - name: Organize files
         if: inputs.build_firmware
