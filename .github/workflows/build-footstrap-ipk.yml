@@ -64,9 +64,9 @@ jobs:
           cd $sdkdir
           # 24.10 SDK 没有 package/luci-i18n-footstrap-zh-cn/compile 目标（i18n 包由
           # luci.mk 随主题一起生成）。版本注入走主题 Makefile 原生的 FOOTSTRAP_VERSION；
-          # luci.mk 生成 i18n 包时用 PKG_SRC_VERSION 兜底，所以两个都传，
-          # 否则 i18n 包会得到版本 0。
-          FOOTSTRAP_VERSION="$FOOTSTRAP_VERSION" PKG_SRC_VERSION="$FOOTSTRAP_VERSION" \
+          # i18n 包的版本由 luci.mk 的 `VERSION:=$(PKG_PO_VERSION)` 决定，所以必须传
+          # PKG_PO_VERSION，否则 i18n 包会得到版本 0。
+          FOOTSTRAP_VERSION="$FOOTSTRAP_VERSION" PKG_PO_VERSION="$FOOTSTRAP_VERSION" \
             make package/luci-theme-footstrap/compile -j$(nproc) V=s 2>&1 | tail -30
           echo '--- results ---'
           find -L bin -type f \( -name 'luci-theme-footstrap*.ipk' -o -name 'luci-i18n-*footstrap*.ipk' \) | sort
@@ -108,19 +108,20 @@ jobs:
               except Exception as e:
                   print('   unreadable archive:', e); bad += 1; continue
               print('   members:', len(names))
-              # 主题包：要有前端静态资源；i18n 包：要有 .lmo 翻译；两者都应有 .PKGINFO
+              # 主题包：要有前端静态资源；i18n 包：要有 .lmo 翻译；
+              # 两者都要有 control 段元数据（ipk 叫 `control`，`.PKGINFO` 是 apk 的约定）。
               has_static = any('luci-static/footstrap' in n for n in names)
               has_lmo = any(n.endswith('.lmo') for n in names)
-              has_pkginfo = any(n.endswith('.PKGINFO') for n in names)
+              has_meta = any(os.path.basename(n) in ('control', '.PKGINFO', 'conffiles') for n in names)
               base = os.path.basename(path)
               if 'i18n' in base:
-                  ok = has_lmo and has_pkginfo
+                  ok = has_lmo and has_meta
               else:
-                  ok = has_static and has_pkginfo
-              print('   static=%s lmo=%s pkginfo=%s -> %s' % (has_static, has_lmo, has_pkginfo, 'OK' if ok else 'MISSING'))
+                  ok = has_static and has_meta
+              print('   static=%s lmo=%s meta=%s -> %s' % (has_static, has_lmo, has_meta, 'OK' if ok else 'MISSING'))
               if not ok:
                   bad += 1
-                  print('   sample:', [n for n in names if 'footstrap' in n or n.endswith('.lmo')][:5])
+                  print('   sample:', [n for n in names if 'footstrap' in n or n.endswith('.lmo') or os.path.basename(n) == 'control'][:6])
           if bad:
               raise SystemExit('VERIFY-FAIL: %d package(s) bad' % bad)
           print('VERIFY-OK')
