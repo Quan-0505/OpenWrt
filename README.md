@@ -34,7 +34,9 @@
 
 ## 📦 固件下载
 
-前往 **[本仓库 Releases](https://github.com/Quan-0505/OpenWrt/releases)** 选择对应设备附件。文件名含机型、构建日期与 OpenWrt 版本。
+所有产物集中在 **[一个 Release](https://github.com/Quan-0505/OpenWrt/releases)**（tag 为当前 OpenWrt 版本，如 `25.12.5`）：
+四机型固件 + footstrap 主题插件都在其中；每次 CI 构建把最新产物发到这里，并自动清理同机型的旧文件。
+文件名含机型、构建日期与 OpenWrt 版本。
 
 | 设备 | 文件名前缀 | 平台 |
 |---|---|---|
@@ -48,12 +50,20 @@
 | `*-ext4.zip` | ext4 可写根文件系统 |
 | `*-sfs.zip` | SquashFS 只读基础系统，配置写入可写层 |
 
+zip 内是 `openwrt-<target>-<device>-……-sysupgrade.img.gz`（**完整磁盘镜像**）。
+
+- **镜像已带 JSON metadata**，可直接用 `sysupgrade` 在线升级（`sysupgrade -v /tmp/xxx.img.gz`）；
+  没有 metadata 的镜像会被 fstools 直接拒绝（`no JSON input`，连 `-F` 也无效）。
+- 也可解压后 `dd` / balenaEtcher 写卡。NanoPi 写入 TF 卡或 eMMC；x86_64 写目标启动盘。
+
 <a id="quick-start"></a>
 
 ## 🚀 快速开始
 
-1. 下载对应设备的固件 ZIP 并解压得到镜像；若仍是 `.img.gz`，按写盘工具要求继续解压。
-2. NanoPi 写入 TF 卡（或 eMMC），x86_64 写入目标启动盘。
+1. 下载对应设备的固件 ZIP 并解压得到 `*.img.gz` 镜像。
+2. 在线升级：把镜像传到设备后 `sysupgrade -v /tmp/openwrt-*.img.gz`（默认保留 `/etc` 内白名单文件，
+   如需保留全部改动加 `-c`——但 ext4 根文件系统没有 overlay，不支持 `-c`）。
+   离线刷机：`dd` 或 balenaEtcher 写入 TF 卡 / eMMC / 启动盘。
 3. 启动后电脑接 LAN 口，浏览器打开 **[http://192.168.2.1](http://192.168.2.1)** 进入 LuCI 完成网络与账户配置。
 
 | 项目 | 默认值 |
@@ -90,8 +100,11 @@ apk add some-package                             # 来自配置好的源
 ```
 
 - 安装 **apk v2** 格式的包会直接报 `ERROR: ...: v2 package format error`——需要提供 v3 包。
-- 其他项目（如 [rust-daed](https://github.com/Quan-0505/rust-daed)、[daed-kdae](https://github.com/Quan-0505/daed-kdae)）的历史 release 里是 v2 包，在 25.12 上装不了；本仓库固件已经内置 daed，无需另装。
-- 主题包（与本固件同基线）：`luci-theme-footstrap-<version>.apk` / `.ipk` 见 [Releases](https://github.com/Quan-0505/OpenWrt/releases/tag/footstrap-zh)。
+- [rust-daed](https://github.com/Quan-0505/rust-daed)、[daed-kdae](https://github.com/Quan-0505/daed-kdae) 的 release 里，
+  规范资产 `*-<device>.apk` **已重打包为 apk v3**，可在 25.12 上直接 `apk add`；旧格式保留为 `*-<device>-v2.apk`。
+  本仓库固件本身已内置 daed，正常无需另装（两者共用 `/usr/bin/daed`，只能装一个）。
+- 主题包（与本固件同基线）也在**同一个 Release** 里：`luci-theme-footstrap-<ver>.apk` + `luci-i18n-footstrap-zh-cn-<ver>.apk`（25.12 / apk v3）、
+  `luci-theme-footstrap_<ver>_all.ipk` + `luci-i18n-footstrap-zh-cn_<ver>_all.ipk`（24.10 / opkg）。
 
 
 <a id="build"></a>
