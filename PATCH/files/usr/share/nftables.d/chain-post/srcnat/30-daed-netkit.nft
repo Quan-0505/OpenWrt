@@ -1,0 +1,1 @@
+ip saddr 169.254.0.11 oifname != "dae0" oifname != "lo" masquerade comment "daed-netkit"
