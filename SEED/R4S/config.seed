@@ -38,6 +38,8 @@ CONFIG_PACKAGE_kmod-lib-zstd=y
 ### DAED ###
 # daed eBPF 运行所需宿主工具（tc/clsact、bpftool、ipset）
 CONFIG_PACKAGE_tc-full=y
+# daed 依赖完整的 iproute2：netns/netkit 拓扑必须由 ip-full 创建（busybox ip 不支持）
+CONFIG_PACKAGE_ip-full=y
 CONFIG_PACKAGE_bpftool-minimal=y
 CONFIG_PACKAGE_ipset=y
 # DaeNext Rust 核心与 DaedNext 3.1.0 WebUI 均从固定提交编译
