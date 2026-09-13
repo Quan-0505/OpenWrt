@@ -229,10 +229,22 @@ jobs:
           import gzip, io, tarfile, os, shutil, urllib.request
           dev = os.environ['DEV']
           tag = 'v3.1.1-sticky'
-          url = 'https://github.com/Quan-0505/rust-daed/releases/download/' + tag + '/rust-daed-' + dev + '.apk'
-          print('fetching', url)
-          urllib.request.urlretrieve(url, '/tmp/daed.apk')
-          raw = open('/tmp/daed.apk', 'rb').read()
+          # 注意：固定取归档的 apk v2（<dev>-v2.apk）。canonical 资产在 2026-09-13 之后
+          # 已重打包为 apk v3（ADB 容器，既不是 tar 也不是 gzip），这里用 tar 解不动。
+          raw = None
+          for name in ('rust-daed-%s-v2.apk' % dev, 'rust-daed-%s.apk' % dev):
+              url = 'https://github.com/Quan-0505/rust-daed/releases/download/%s/%s' % (tag, name)
+              print('fetching', url)
+              try:
+                  with urllib.request.urlopen(url, timeout=300) as resp:
+                      cand = resp.read()
+              except Exception as e:
+                  print('  fetch failed:', e); continue
+              if cand[:2] == b'\x1f\x8b':
+                  raw = cand; print('  ok, gzip payload', len(cand), 'bytes'); break
+              print('  skipped: not an apk v2 gzip payload (magic %s)' % cand[:4].hex())
+          if raw is None:
+              raise SystemExit('no apk v2 payload available for %s' % dev)
           tf = tarfile.open(fileobj=io.BytesIO(gzip.decompress(raw)), mode='r:')
           dst = os.path.join('openwrt', 'package', 'new', 'daed', 'prebuilt-data')
           if os.path.isdir(dst):
