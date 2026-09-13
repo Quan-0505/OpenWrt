@@ -32,8 +32,16 @@ jobs:
           cd $sdkdir
           ./scripts/feeds update -a >/dev/null 2>&1
           ./scripts/feeds install -a >/dev/null 2>&1
+          # 与固件使用同一个主题提交（SCRIPTS/02_prepare_package.sh 里 pin 的那个），
+          # 这样 24.10 的 ipk 与 25.12 的 apk 版本号同源，便于对照。
+          commit=$(sed -nE 's/.*fetch -q --depth 1 origin ([0-9a-f]{40}).*/\1/p' ../SCRIPTS/02_prepare_package.sh)
+          test "${#commit}" -eq 40
+          echo "theme commit: $commit"
           rm -rf theme _t
-          git clone -q --depth 1 https://github.com/VizzleTF/luci-theme-footstrap theme
+          git init -q theme
+          git -C theme remote add origin https://github.com/VizzleTF/luci-theme-footstrap
+          git -C theme fetch -q --depth 1 origin "$commit"
+          git -C theme checkout -q --detach FETCH_HEAD
           mkdir -p package/luci-theme-footstrap
           cp -r theme/luci-theme-footstrap/* package/luci-theme-footstrap/
           for lang in zh-cn zh_Hans; do
