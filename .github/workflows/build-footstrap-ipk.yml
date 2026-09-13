@@ -135,13 +135,16 @@ jobs:
           print('VERIFY-OK')
           PYEOF
 
-      - name: Publish ipk to footstrap-zh release
+      - name: Publish ipk into the firmware release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           python3 - <<'PYEOF'
           import glob, json, os, urllib.request, urllib.parse
           repo = os.environ['GITHUB_REPOSITORY']; tok = os.environ['GITHUB_TOKEN']
+          # 所有产物（各机型固件 + 主题插件）统一发布到同一个 release
+          tag = os.environ.get('RELEASE_TAG') or '25.12.5'
           sdkdir = open('sdkdir').read().strip()
           def api(path, method='GET', body=None, ctype=None, host='api.github.com'):
               headers = {'Authorization': 'Bearer ' + tok, 'User-Agent': 'dsh', 'Accept': 'application/vnd.github+json'}
@@ -163,9 +166,9 @@ jobs:
           print('ipks:', hits)
           if not hits:
               raise SystemExit(1)
-          rel = api('/releases/tags/footstrap-zh')
+          rel = api('/releases/tags/' + urllib.parse.quote(tag))
           if not rel or 'id' not in rel:
-              rel = api('/releases', 'POST', {'tag_name': 'footstrap-zh', 'name': 'luci-theme-footstrap 中文版 (ipk/apk)', 'body': 'luci-theme-footstrap + 自译中文语言包。', 'draft': False, 'prerelease': False}, 'json')
+              rel = api('/releases', 'POST', {'tag_name': tag, 'name': 'OpenWrt %s firmware + plugins' % tag, 'body': 'CI 统一发布：各机型固件（ext4 / sfs）+ footstrap 主题插件（apk / ipk）。', 'draft': False, 'prerelease': False}, 'json')
           rid = rel['id']
           for f in hits:
               name = os.path.basename(f)
