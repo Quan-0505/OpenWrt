@@ -463,7 +463,12 @@ jobs:
           # rockchip 等目标的镜像配方不带 append-metadata，缺了它 sysupgrade 会直接
           # 报 "Firmware image couldn't be validated: no JSON input"（-F 也无效）。
           fwtool=openwrt/staging_dir/host/bin/fwtool
-          test -x "$fwtool" || { echo 'fwtool not built'; ls openwrt/staging_dir/host/bin | head; exit 1; }
+          if [ ! -x "$fwtool" ]; then
+            # 主机工具目录里没有就全局找一次（不同分支/构建顺序下路径可能不同）
+            fwtool=$(find openwrt/staging_dir -type f -name fwtool -perm -u+x -print -quit || true)
+          fi
+          test -x "${fwtool:-}" || { echo 'fwtool not built anywhere under staging_dir'; find openwrt/staging_dir -name 'fwtool*' | head; exit 1; }
+          echo "using fwtool: $fwtool"
           board=""
           bjson=$(find openwrt/build_dir -maxdepth 4 -path '*root-*' -name board.json -print -quit || true)
           if [ -n "${bjson:-}" ]; then
@@ -546,20 +551,24 @@ jobs:
                   api('/releases/assets/%d' % a['id'], method='DELETE')
           PYEOF
 
-      - name: Create release
+      - name: Publish firmware to the release
         if: inputs.build_firmware
         id: create_release
-        uses: ncipollo/release-action@main
-        with:
-          name: OpenWRT-${{ env.latest_release }}
-          allowUpdates: true
-          prerelease: false
-          # 所有机型发到同一个 release，保证“一个 release = 最新固件 + 插件”
-          tag: ${{ env.latest_release }}
-          commit: ${{ github.sha }}
-          replacesArtifacts: false
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: ./artifact/*.zip
+        # 不再用第三方 release action：它在 token 权限受限时会 403 并中断整个构建。
+        # 这里失败也不判为构建失败（artifact 已上传，可由运维脚本补发）。
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ env.latest_release }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "OpenWrt $TAG firmware + plugins" \
+              --notes "CI publishes every device firmware (ext4 / sfs) plus the footstrap theme packages (apk / ipk) in this single release." || true
+          fi
+          gh release upload "$TAG" ./artifact/*.zip --clobber
+          gh release view "$TAG" --json assets --jq '.assets[].name'
 
       - name: Print Disk Space After
         run: df -h
