@@ -412,8 +412,9 @@ jobs:
           echo 'netkit fw4 include present'
           # daed 的口子：没有 ip-full 就建不出 daens netns / dae0-dae0peer netkit，数据面不会 attach
           test -x "$root/usr/libexec/ip-full" || { echo 'ip-full missing in image (daed cannot create the netkit topology)'; exit 1; }
-          test -x "$root/usr/sbin/tc" || test -x "$root/sbin/tc" || { echo 'tc missing in image'; exit 1; }
-          echo 'host tools present: ip-full + tc'
+          # tc-full 同样装在 /usr/libexec/，/sbin/tc 是安装时才建立的 alternative 软链，构建根里没有
+          test -x "$root/usr/libexec/tc-full" || { echo 'tc-full missing in image'; exit 1; }
+          echo 'host tools present: ip-full + tc-full'
           # BTF evidence: scan every candidate vmlinux-ish artifact, print what each really is,
           # and accept the check when a real ELF carries a .BTF section (or a .btf side artifact exists).
           # 注意：必须排除 toolchain 自带的 linux 头文件目录，否则会误选到没有 BTF 配置的那份。
