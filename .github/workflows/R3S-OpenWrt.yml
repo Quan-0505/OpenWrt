@@ -23,6 +23,9 @@ on:
   watch:
     types: started
 
+permissions:
+  contents: write
+
 jobs:
   build:
     uses: ./.github/workflows/OpenWrt-Matrix.yml

@@ -35,6 +35,9 @@ on:
         type: boolean
         default: true
 
+permissions:
+  contents: write
+
 jobs:
   setup:
     runs-on: ubuntu-24.04
