@@ -70,9 +70,29 @@
 
 **DaedNext**：浏览器打开 `http://192.168.2.1:2023`，首次进入设置管理密码，然后在面板里添加订阅/节点并开启开关。
 - 面板由 daemon 自带（web 根目录 `/usr/share/daed/web`），**不使用 luci-app-daed**，因此 LuCI "服务" 菜单里没有 daed 入口属正常现象。
-- 开启开关时若提示 `resident candidate preflight failed … required host tool is missing`，安装宿主工具：`apk add tc-full bpftool-minimal ip-full ipset`。
-- 若提示 `clsact qdisc add failed` 或 `/sys/kernel/btf/vmlinux` 不存在，说明内核缺少 eBPF 特性，请使用本仓库最新固件（内核已补齐 VETH / clsact / BTF）。
-- 内核需要 veth 与 clsact（tc eBPF），本仓库固件已内置；日志见 `/etc/daed/logs/current.jsonl`。
+- 宿主工具（`tc-full` / `bpftool-minimal` / `ip-full` / `ipset`）已随固件内置；若自行裁剪后提示 `required host tool is missing`，手动补：`apk add tc-full bpftool-minimal ip-full ipset`。
+- 内核已内置 dae 所需特性（VETH / clsact / BPF sched / BTF），无需额外内核模块。
+- **flow offloading 已默认关闭**：nft flowtable 会绕过 tc/eBPF 钩子，导致 daed 抓不到流量（表现为"开了代理但出口 IP 没变"）。
+- 已内置 **fw4 规则**（`/usr/share/nftables.d/chain-post/{forward,srcnat}/30-daed-netkit.nft`）：放行 daed 数据面 netkit 设备对（`dae0` ↔ `dae0peer`，`daens` netns）的转发，并为源地址 `169.254.0.11` 做 SNAT。缺这两条会让节点全部拨号失败（日志 `no alive dialer`、面板节点全红），且 `fw4 reload` 后依然生效。
+- 日志见 `/etc/daed/logs/current.jsonl`（实际指向 `/tmp/log/daed`，重启清空）；状态库 `/etc/daed/daed.db`（SQLite）。
+- 两个已知现象：① 面板的节点延迟/存活有时不刷新（显示灰色但实际转发正常，**以能否打开墙外站点为准**）；② daed 属 fail-closed——策略组无可用节点时被代理流量会被拒绝，国内直连规则不受影响。
+- 排查"通了没有"，务必确认**路由器本身到节点 IP 的 TCP** 可达（ICMP 通不代表 TCP 通；上游策略路由/环路会只打死 TCP）：`curl -v --max-time 8 https://<节点IP>:<端口>`。
+
+<a id="packages"></a>
+
+## 📦 安装第三方包（apk v3）
+
+本固件基于 **OpenWrt 25.12**，包管理为 **apk-tools 3.x**，包格式是 **apk v3**（ADB 容器；既不是 tar 也不是 gzip，用 `tar`/apk2 工具打不开是正常的）。
+
+```sh
+apk add --allow-untrusted ./some-package.apk     # 未签名的本地包
+apk add some-package                             # 来自配置好的源
+```
+
+- 安装 **apk v2** 格式的包会直接报 `ERROR: ...: v2 package format error`——需要提供 v3 包。
+- 其他项目（如 [rust-daed](https://github.com/Quan-0505/rust-daed)、[daed-kdae](https://github.com/Quan-0505/daed-kdae)）的历史 release 里是 v2 包，在 25.12 上装不了；本仓库固件已经内置 daed，无需另装。
+- 主题包（与本固件同基线）：`luci-theme-footstrap-<version>.apk` / `.ipk` 见 [Releases](https://github.com/Quan-0505/OpenWrt/releases/tag/footstrap-zh)。
+
 
 <a id="build"></a>
 
