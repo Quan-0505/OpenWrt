@@ -63,41 +63,68 @@ jobs:
           sdkdir=$(cat sdkdir)
           cd $sdkdir
           # 24.10 SDK 没有 package/luci-i18n-footstrap-zh-cn/compile 目标（i18n 包由
-          # luci.mk 随主题一起生成）；FOOTSTRAP_VERSION 是主题 Makefile 原生支持的版本注入
-          # 变量，同时决定自动生成的 i18n 包版本（不传的话 i18n 会得到版本 0）。
-          FOOTSTRAP_VERSION="$FOOTSTRAP_VERSION" make package/luci-theme-footstrap/compile -j$(nproc) V=s 2>&1 | tail -30
+          # luci.mk 随主题一起生成）。版本注入走主题 Makefile 原生的 FOOTSTRAP_VERSION；
+          # luci.mk 生成 i18n 包时用 PKG_SRC_VERSION 兜底，所以两个都传，
+          # 否则 i18n 包会得到版本 0。
+          FOOTSTRAP_VERSION="$FOOTSTRAP_VERSION" PKG_SRC_VERSION="$FOOTSTRAP_VERSION" \
+            make package/luci-theme-footstrap/compile -j$(nproc) V=s 2>&1 | tail -30
           echo '--- results ---'
           find -L bin -type f \( -name 'luci-theme-footstrap*.ipk' -o -name 'luci-i18n-*footstrap*.ipk' \) | sort
 
       - name: Verify ipk packages
         run: |
-          set +e
-          sdkdir=$(cat sdkdir)
-          ok=1
-          while IFS= read -r f; do
-            echo "== $f"
-            L=$(tar -tf "$f" 2>/dev/null)
-            if [ -z "$L" ]; then echo 'unreadable archive'; ok=0; continue; fi
-            hit=0
-            # 现代 ipk = tar.gz，内含 control.tar.gz / data.tar.gz。
-            # 内层流必须用管道传递：用 $(...) 捕获二进制会被 shell 破坏（NUL 截断/字节改写），
-            # 从而误报 content MISSING —— 这正是之前 verify 一直失败的原因。
-            for inner in data.tar.gz ./data.tar.gz; do
-              if echo "$L" | grep -q "$(basename "$inner")"; then
-                if tar -xOf "$f" "$inner" 2>/dev/null | tar -tzf - 2>/dev/null | grep -qE 'luci-static/footstrap|\.lmo$'; then hit=1; fi
-                break
-              fi
-            done
-            for inner in control.tar.gz ./control.tar.gz; do
-              if echo "$L" | grep -q "$(basename "$inner")"; then
-                if tar -xOf "$f" "$inner" 2>/dev/null | tar -tzf - 2>/dev/null | grep -q '\.PKGINFO'; then hit=1; fi
-                break
-              fi
-            done
-            [ "$hit" = 1 ] && echo 'content-ok' || { echo 'content MISSING'; ok=0; }
-          done < <(find -L "$sdkdir/bin" -type f \( -name '*.ipk' \) | grep -i footstrap | sort)
-          [ "$ok" = 1 ] || { echo VERIFY-FAIL; exit 1; }
-          echo VERIFY-OK
+          set -euo pipefail
+          sd=$(cat sdkdir)
+          python3 - "$sd" <<'PYEOF'
+          import io, os, re, sys, tarfile
+          sd = sys.argv[1]
+          targets = []
+          for root, _dirs, files in os.walk(os.path.join(sd, 'bin')):
+              for f in files:
+                  if f.endswith('.ipk') and 'footstrap' in f.lower():
+                      targets.append(os.path.join(root, f))
+          targets.sort()
+          assert targets, 'no footstrap ipk produced'
+
+          def inner_names(blob):
+              try:
+                  with tarfile.open(fileobj=io.BytesIO(blob), mode='r:*') as t:
+                      return t.getnames()
+              except Exception:
+                  return []
+
+          bad = 0
+          for path in targets:
+              print('==', path)
+              names = []
+              try:
+                  with tarfile.open(path, 'r:*') as tf:
+                      for m in tf.getmembers():
+                          base = os.path.basename(m.name)
+                          if re.match(r'^(control|data)\.tar(\.(gz|xz|zst))?$', base):
+                              fh = tf.extractfile(m)
+                              if fh is not None:
+                                  names += inner_names(fh.read())
+              except Exception as e:
+                  print('   unreadable archive:', e); bad += 1; continue
+              print('   members:', len(names))
+              # 主题包：要有前端静态资源；i18n 包：要有 .lmo 翻译；两者都应有 .PKGINFO
+              has_static = any('luci-static/footstrap' in n for n in names)
+              has_lmo = any(n.endswith('.lmo') for n in names)
+              has_pkginfo = any(n.endswith('.PKGINFO') for n in names)
+              base = os.path.basename(path)
+              if 'i18n' in base:
+                  ok = has_lmo and has_pkginfo
+              else:
+                  ok = has_static and has_pkginfo
+              print('   static=%s lmo=%s pkginfo=%s -> %s' % (has_static, has_lmo, has_pkginfo, 'OK' if ok else 'MISSING'))
+              if not ok:
+                  bad += 1
+                  print('   sample:', [n for n in names if 'footstrap' in n or n.endswith('.lmo')][:5])
+          if bad:
+              raise SystemExit('VERIFY-FAIL: %d package(s) bad' % bad)
+          print('VERIFY-OK')
+          PYEOF
 
       - name: Publish ipk to footstrap-zh release
         env:
