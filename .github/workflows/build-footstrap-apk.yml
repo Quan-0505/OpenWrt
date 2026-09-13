@@ -85,7 +85,7 @@ jobs:
         run: |
           set -euo pipefail
           # luci.mk builds language subpackages from the theme target itself.
-          FOOTSTRAP_VERSION="$FOOTSTRAP_VERSION" PKG_SRC_VERSION="$FOOTSTRAP_VERSION" make package/luci-theme-footstrap/compile -j"$(nproc)" V=s 2>&1 | tee ../footstrap-build.log
+          FOOTSTRAP_VERSION="$FOOTSTRAP_VERSION" PKG_PO_VERSION="$FOOTSTRAP_VERSION" make package/luci-theme-footstrap/compile -j"$(nproc)" V=s 2>&1 | tee ../footstrap-build.log
 
       - name: Verify APK v3 payloads and collect packages
         run: |
