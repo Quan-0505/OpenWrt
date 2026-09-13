@@ -1,4 +1,4 @@
-name: Build footstrap zh ipk+apk
+name: Build footstrap ipk for OpenWrt 24.10
 
 on:
   workflow_dispatch:
@@ -32,21 +32,33 @@ jobs:
           cd $sdkdir
           ./scripts/feeds update -a >/dev/null 2>&1
           ./scripts/feeds install -a >/dev/null 2>&1
-          git clone -q --depth 1 https://github.com/VizzleTF/luci-theme-footstrap _t
+          rm -rf theme _t
+          git clone -q --depth 1 https://github.com/VizzleTF/luci-theme-footstrap theme
           mkdir -p package/luci-theme-footstrap
-          cp -r _t/luci-theme-footstrap/* package/luci-theme-footstrap/
+          cp -r theme/luci-theme-footstrap/* package/luci-theme-footstrap/
           for lang in zh-cn zh_Hans; do
             mkdir -p package/luci-theme-footstrap/po/$lang
             cp ../PATCH/theme-footstrap-zh/zh_Hans/footstrap.po package/luci-theme-footstrap/po/$lang/footstrap.po
           done
+          # 主题包本身不带版本元数据（本地拷贝会得到版本 0），这里按 OpenWrt 风格
+          # 用固定提交的时间戳生成版本：<YY>.<年内第几天>.<时分秒>~<短 sha>
+          # 例如 26.255.205539~faa0ee7，既单调递增又可直接追溯到提交。
+          FOOTSTRAP_COMMIT=$(git -C theme rev-parse HEAD)
+          FOOTSTRAP_VERSION="$(git -C theme show -s --format=%cd --date=format:'%y.%j.%H%M%S' "$FOOTSTRAP_COMMIT")~$(printf %.7s "$FOOTSTRAP_COMMIT")"
+          echo "FOOTSTRAP_VERSION=$FOOTSTRAP_VERSION" >> "$GITHUB_ENV"
+          mf=package/luci-theme-footstrap/Makefile
+          if grep -q '^PKG_VERSION' "$mf"; then
+            sed -i "s|^PKG_VERSION:=.*|PKG_VERSION:=$FOOTSTRAP_VERSION|" "$mf"
+          else
+            sed -i "/include \$(TOPDIR)\/rules.mk/a PKG_VERSION:=$FOOTSTRAP_VERSION" "$mf"
+          fi
+          grep -n '^PKG_VERSION' "$mf"
           echo 'CONFIG_PACKAGE_luci-theme-footstrap=y' > .config
           echo 'CONFIG_PACKAGE_luci-i18n-footstrap-zh-cn=y' >> .config
           echo 'CONFIG_PACKAGE_luci-theme-bootstrap=n' >> .config
           make defconfig >/dev/null 2>&1
 
       - name: Compile ipk packages
-        env:
-          FOOTSTRAP_VERSION: 1.0.0
         run: |
           sdkdir=$(cat sdkdir)
           cd $sdkdir
@@ -98,7 +110,7 @@ jobs:
               except urllib.error.HTTPError as e:
                   print('HTTP', e.code, host + path, e.read()[:200]); return None
           hits = glob.glob(sdkdir + '/bin/**/*footstrap*.ipk', recursive=True)
-          hits = [h for h in hits if ('luci-theme-footstrap_1' in os.path.basename(h) or 'zh-cn' in os.path.basename(h))]
+          hits = [h for h in hits if 'luci-theme-footstrap' in os.path.basename(h) or 'zh-cn' in os.path.basename(h)]
           hits = sorted(set(hits))
           print('ipks:', hits)
           if not hits:
