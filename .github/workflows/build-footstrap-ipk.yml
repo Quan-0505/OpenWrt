@@ -62,7 +62,10 @@ jobs:
         run: |
           sdkdir=$(cat sdkdir)
           cd $sdkdir
-          make package/luci-theme-footstrap/compile package/luci-i18n-footstrap-zh-cn/compile -j$(nproc) V=s 2>&1 | tail -30
+          # 24.10 SDK 没有 package/luci-i18n-footstrap-zh-cn/compile 目标（i18n 包由
+          # luci.mk 随主题一起生成）；FOOTSTRAP_VERSION 是主题 Makefile 原生支持的版本注入
+          # 变量，同时决定自动生成的 i18n 包版本（不传的话 i18n 会得到版本 0）。
+          FOOTSTRAP_VERSION="$FOOTSTRAP_VERSION" make package/luci-theme-footstrap/compile -j$(nproc) V=s 2>&1 | tail -30
           echo '--- results ---'
           find -L bin -type f \( -name 'luci-theme-footstrap*.ipk' -o -name 'luci-i18n-*footstrap*.ipk' \) | sort
 
@@ -76,12 +79,21 @@ jobs:
             L=$(tar -tf "$f" 2>/dev/null)
             if [ -z "$L" ]; then echo 'unreadable archive'; ok=0; continue; fi
             hit=0
-            echo "$L" | grep -qE '\.lmo$|luci-static/footstrap' && hit=1
-            if echo "$L" | grep -q 'data.tar.gz'; then
-              d=$(tar -xOf "$f" data.tar.gz 2>/dev/null)
-              inner=$(printf '%s' "$d" | tar -tf - 2>/dev/null)
-              echo "$inner" | grep -qE '\.lmo$|luci-static/footstrap' && hit=1
-            fi
+            # 现代 ipk = tar.gz，内含 control.tar.gz / data.tar.gz。
+            # 内层流必须用管道传递：用 $(...) 捕获二进制会被 shell 破坏（NUL 截断/字节改写），
+            # 从而误报 content MISSING —— 这正是之前 verify 一直失败的原因。
+            for inner in data.tar.gz ./data.tar.gz; do
+              if echo "$L" | grep -q "$(basename "$inner")"; then
+                if tar -xOf "$f" "$inner" 2>/dev/null | tar -tzf - 2>/dev/null | grep -qE 'luci-static/footstrap|\.lmo$'; then hit=1; fi
+                break
+              fi
+            done
+            for inner in control.tar.gz ./control.tar.gz; do
+              if echo "$L" | grep -q "$(basename "$inner")"; then
+                if tar -xOf "$f" "$inner" 2>/dev/null | tar -tzf - 2>/dev/null | grep -q '\.PKGINFO'; then hit=1; fi
+                break
+              fi
+            done
             [ "$hit" = 1 ] && echo 'content-ok' || { echo 'content MISSING'; ok=0; }
           done < <(find -L "$sdkdir/bin" -type f \( -name '*.ipk' \) | grep -i footstrap | sort)
           [ "$ok" = 1 ] || { echo VERIFY-FAIL; exit 1; }
