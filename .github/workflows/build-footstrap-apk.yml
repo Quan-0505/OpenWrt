@@ -2,6 +2,11 @@ name: Build footstrap APK for OpenWrt 25.12
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "release tag to publish into (must match the firmware release)"
+        required: false
+        default: '25.12.5'
 
 permissions:
   contents: write
@@ -116,13 +121,16 @@ jobs:
           path: artifacts/
           if-no-files-found: error
 
-      - name: Publish APKs alongside existing IPKs
+      - name: Publish APKs into the firmware release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release view footstrap-zh >/dev/null
-          gh release upload footstrap-zh artifacts/*.apk --clobber
+          tag="${{ inputs.release_tag }}"
+          gh release view "$tag" >/dev/null || gh release create "$tag" \
+            --title "OpenWrt $tag firmware + plugins" \
+            --notes "CI publishes every device firmware (ext4 / sfs) plus the footstrap theme packages (apk / ipk) in this single release."
+          gh release upload "$tag" artifacts/*.apk --clobber
 
       - uses: actions/upload-artifact@v4
         if: failure()

@@ -504,7 +504,7 @@ jobs:
           retention-days: 7
 
       - name: Clean stale release assets (this device)
-        if: inputs.build_firmware && matrix.name != 'R4S'
+        if: inputs.build_firmware
         env:
           PREFIX: ${{ env.artifact_prefix }}
           TAG: ${{ env.latest_release }}
@@ -541,7 +541,8 @@ jobs:
           name: OpenWRT-${{ env.latest_release }}
           allowUpdates: true
           prerelease: false
-          tag: ${{ matrix.name == 'R4S' && format('{0}-daenext-{1}', env.latest_release, github.run_id) || env.latest_release }}
+          # 所有机型发到同一个 release，保证“一个 release = 最新固件 + 插件”
+          tag: ${{ env.latest_release }}
           commit: ${{ github.sha }}
           replacesArtifacts: false
           token: ${{ secrets.GITHUB_TOKEN }}
