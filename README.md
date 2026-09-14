@@ -52,18 +52,23 @@
 
 zip 内是 `openwrt-<target>-<device>-……-sysupgrade.img.gz`（**完整磁盘镜像**）。
 
-- **镜像已带 JSON metadata**，可直接用 `sysupgrade` 在线升级（`sysupgrade -v /tmp/xxx.img.gz`）；
-  没有 metadata 的镜像会被 fstools 直接拒绝（`no JSON input`，连 `-F` 也无效）。
-- 也可解压后 `dd` / balenaEtcher 写卡。NanoPi 写入 TF 卡或 eMMC；x86_64 写目标启动盘。
+- **镜像已带 JSON metadata**（附在 `.img.gz` 文件末尾），可直接 `sysupgrade` 在线升级。
+- ⚠️ **直接刷 `.gz`，不要先解压**：metadata 位于 gzip 流之后，`gunzip` 会把它丢掉，
+  之后 fstools 会拒绝该镜像（`Firmware image couldn't be validated: no JSON input`，`-F` 也无效）。
+- 离线写卡：解压后 `dd` / balenaEtcher 写入。NanoPi 写 TF 卡或 eMMC；x86_64 写目标启动盘。
 
 <a id="quick-start"></a>
 
 ## 🚀 快速开始
 
-1. 下载对应设备的固件 ZIP 并解压得到 `*.img.gz` 镜像。
-2. 在线升级：把镜像传到设备后 `sysupgrade -v /tmp/openwrt-*.img.gz`（默认保留 `/etc` 内白名单文件，
-   如需保留全部改动加 `-c`——但 ext4 根文件系统没有 overlay，不支持 `-c`）。
-   离线刷机：`dd` 或 balenaEtcher 写入 TF 卡 / eMMC / 启动盘。
+1. 下载对应设备的固件 ZIP，解出其中的 `*.img.gz`（**不要解压**）。
+2. 在线升级：把 `.gz` 传到设备后直接刷——
+   ```sh
+   scp openwrt-*-sysupgrade.img.gz root@192.168.2.1:/tmp/
+   ssh root@192.168.2.1 'sysupgrade -T /tmp/openwrt-*-sysupgrade.img.gz && sysupgrade -v -k /tmp/openwrt-*-sysupgrade.img.gz'
+   ```
+   默认保留 `/etc` 内白名单文件（把要保留的路径写进 `/etc/sysupgrade.conf`）。`-k` 会记录已装包列表。
+   离线写卡：解压成 `.img` 后 `dd` 或 balenaEtcher 写入 TF 卡 / eMMC / 启动盘。
 3. 启动后电脑接 LAN 口，浏览器打开 **[http://192.168.2.1](http://192.168.2.1)** 进入 LuCI 完成网络与账户配置。
 
 | 项目 | 默认值 |
