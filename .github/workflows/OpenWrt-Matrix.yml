@@ -480,9 +480,17 @@ jobs:
             fi
             echo '   metadata MISSING -> appending'
             if [ -z "$fwtool" ]; then
-              fwtool=$(find openwrt/staging_dir -type f -name fwtool -perm -u+x -print -quit || true)
+              # 必须用**主机版** fwtool：staging_dir/target-*/root-*/usr/bin/fwtool 是目标机
+              # 二进制（musl/异架构），在 runner 上无法执行（cannot execute）
+              for cand in openwrt/staging_dir/host/bin/fwtool openwrt/staging_dir/hostpkg/bin/fwtool; do
+                [ -x "$cand" ] && { fwtool="$cand"; break; }
+              done
             fi
-            test -x "${fwtool:-}" || { echo '   fwtool not found under staging_dir'; exit 1; }
+            if [ -z "$fwtool" ]; then
+              fwtool=$(find openwrt/staging_dir -type f -name fwtool -perm -u+x \
+                -not -path '*/target-*' -not -path '*/root-*' -print -quit || true)
+            fi
+            test -x "${fwtool:-}" || { echo '   host fwtool not found under staging_dir'; exit 1; }
             echo "   using fwtool: $fwtool"
             python3 -c 'import json,sys; b=sys.argv[1]; print(json.dumps({"metadata_version":"1.1","compat_version":"1.0","supported_devices":([b] if b else []),"version":{"dist":"OpenWrt","version":sys.argv[2],"revision":sys.argv[3],"target":sys.argv[4],"board":b}},ensure_ascii=False))' "$board" "${{ env.latest_release }}" "${{ github.sha }}" "${{ matrix.arch }}" > /tmp/sysupgrade-meta.json
             cat /tmp/sysupgrade-meta.json; echo
