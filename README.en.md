@@ -20,6 +20,8 @@ A streamlined firmware based on [QiuSimons/YAOF](https://github.com/QiuSimons/YA
 
 </div>
 
+**English** &nbsp;|&nbsp; **[简体中文](./README.md)**
+
 ---
 
 ## ✨ Features
