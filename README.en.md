@@ -93,7 +93,7 @@ Inside the zip is `openwrt-<target>-<device>-……-sysupgrade.img.gz` (**a comp
 - **fw4 rules** are built in (`/usr/share/nftables.d/chain-post/{forward,srcnat}/30-daed-netkit.nft`): they allow forwarding for the daed data-plane netkit device pair (`dae0` ↔ `dae0peer`, `daens` netns), and do SNAT for the source address `169.254.0.11`. Missing these two rules makes every node fail to dial (log `no alive dialer`, all nodes red in the panel), and they still take effect after `fw4 reload`.
 - Logs are in `/etc/daed/logs/current.jsonl` (actually pointing to `/tmp/log/daed`, cleared on reboot); the state database is `/etc/daed/daed.db` (SQLite).
 - Two known behaviours: ① node latency/alive status in the panel sometimes does not refresh (shown grey while forwarding actually works — **judge by whether blocked sites open**); ② daed is fail-closed — when a policy group has no usable node, proxied traffic is rejected, while domestic direct rules are unaffected.
-- When troubleshooting "is it working or not", make sure to confirm that **TCP from the router itself to the node IP** is reachable (ICMP working does not mean TCP works; upstream policy routing/loops may kill only TCP): `curl -v --max-time 8 https://<节点IP>:<端口>`.
+- When troubleshooting "is it working or not", make sure to confirm that **TCP from the router itself to the node IP** is reachable (ICMP working does not mean TCP works; upstream policy routing/loops may kill only TCP): `curl -v --max-time 8 https://<node-IP>:<port>`.
 
 <a id="packages"></a>
 
