@@ -102,8 +102,8 @@ Inside the zip is `openwrt-<target>-<device>-……-sysupgrade.img.gz` (**a comp
 This firmware is based on **OpenWrt 25.12**, its package manager is **apk-tools 3.x** and the package format is **apk v3** (an ADB container; it is neither tar nor gzip, so it is normal that `tar`/apk2 tools cannot open it).
 
 ```sh
-apk add --allow-untrusted ./some-package.apk     # 未签名的本地包
-apk add some-package                             # 来自配置好的源
+apk add --allow-untrusted ./some-package.apk     # unsigned local package
+apk add some-package                             # from a configured feed
 ```
 
 - Installing a package in **apk v2** format fails outright with `ERROR: ...: v2 package format error` — you need to provide a v3 package.
