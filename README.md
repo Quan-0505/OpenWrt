@@ -14,6 +14,8 @@
 [![R4S](https://github.com/Quan-0505/OpenWrt/actions/workflows/R4S-OpenWrt.yml/badge.svg?branch=25.12)](https://github.com/Quan-0505/OpenWrt/actions/workflows/R4S-OpenWrt.yml)
 [![X86](https://github.com/Quan-0505/OpenWrt/actions/workflows/X86-OpenWrt.yml/badge.svg?branch=25.12)](https://github.com/Quan-0505/OpenWrt/actions/workflows/X86-OpenWrt.yml)
 
+**[简体中文](./README.md)** &nbsp;|&nbsp; **[English](./README.en.md)**
+
 基于 [QiuSimons/YAOF](https://github.com/QiuSimons/YAOF) 的精简固件，面向 **NanoPi R2S / R3S / R4S 与 x86_64**，只保留 **KixDNS + DaedNext** 两条主线。
 
 [固件下载](#downloads) · [快速开始](#quick-start) · [使用说明](#usage) · [自行编译](#build) · [相关项目](#related)
