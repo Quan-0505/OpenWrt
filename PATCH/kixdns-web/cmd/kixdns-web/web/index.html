@@ -4,17 +4,37 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>KixDNS 控制台</title>
+<script>
+// Applied before the stylesheet paints, otherwise a saved light theme flashes
+// dark on every load.
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('kixdns-theme'); } catch (e) { /* private mode */ }
+  if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
 <style>
-  :root{--bg:#0f1115;--card:#181b22;--fg:#e6e8ee;--muted:#8b93a7;--acc:#4f8cff;--ok:#3fb950;--warn:#d29922;--err:#f85149;--line:#262a33}
+  :root{--bg:#0f1115;--card:#181b22;--fg:#e6e8ee;--muted:#8b93a7;--acc:#4f8cff;--ok:#3fb950;--warn:#d29922;--err:#f85149;--line:#262a33;
+        --field:#20242e;--code:#0b0d11;--spark2:#2b5fb8;
+        --danger-line:#5a2a2a;--ok-bg:#10281a;--ok-line:#1f5c33;--ok-fg:#7ee2a8;--err-bg:#2a1416;--err-line:#6e2b2b;--err-fg:#ff9a92;
+        --dot-off:#555c6b}
+  /* Light theme: overrides only the palette, so every rule below keeps working.
+     --code stays darker than --bg on purpose: a log pane that is lighter than
+     the page looks like a hole rather than a panel. */
+  html[data-theme="light"]{--bg:#f4f6fa;--card:#ffffff;--fg:#1b1f27;--muted:#5f6880;--acc:#2563eb;--ok:#1a7f37;--warn:#9a6700;--err:#cf222e;--line:#dfe3ea;
+        --field:#eef1f6;--code:#f8fafc;--spark2:#93b4f5;
+        --danger-line:#f0b8b8;--ok-bg:#e6f6ec;--ok-line:#a8dcbc;--ok-fg:#11632f;--err-bg:#fdeced;--err-line:#f3b8bb;--err-fg:#a40e18;
+        --dot-off:#9aa2b1}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI",Roboto,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif}
   header{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
   header h1{font-size:16px;margin:0;font-weight:600}
   .spacer{flex:1}
-  .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;background:#20242e;border:1px solid var(--line)}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;background:var(--field);border:1px solid var(--line)}
   .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
   .dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
-  .dot.off{background:var(--err)}
+  .dot.off{background:var(--dot-off)}
   nav{display:flex;gap:4px;padding:10px 20px 0;background:var(--card);border-bottom:1px solid var(--line);overflow-x:auto}
   nav button{background:none;border:0;color:var(--muted);padding:8px 14px;cursor:pointer;font-size:14px;border-bottom:2px solid transparent;white-space:nowrap}
   nav button.active{color:var(--fg);border-bottom-color:var(--acc)}
@@ -31,23 +51,25 @@
   th{color:var(--muted);font-weight:500}
   td.num{text-align:right;font-variant-numeric:tabular-nums}
   .bar{height:6px;border-radius:3px;background:var(--acc);min-width:2px}
-  .barwrap{background:#20242e;border-radius:3px;overflow:hidden;width:70px;display:inline-block;vertical-align:middle}
-  pre{background:#0b0d11;border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;max-height:52vh;font-size:12px;line-height:1.45}
-  textarea{width:100%;min-height:48vh;background:#0b0d11;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
-  button.act{background:#20242e;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px}
+  .barwrap{background:var(--field);border-radius:3px;overflow:hidden;width:70px;display:inline-block;vertical-align:middle}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;max-height:52vh;font-size:12px;line-height:1.45}
+  textarea{width:100%;min-height:48vh;background:var(--code);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
+  button.act{background:var(--field);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px}
   button.act:hover{border-color:var(--acc)}
   button.act.primary{background:var(--acc);border-color:var(--acc);color:#fff}
-  button.act.danger{color:var(--err);border-color:#5a2a2a}
+  button.act.danger{color:var(--err);border-color:var(--danger-line)}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
   .msg{padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;display:none}
   .msg.show{display:block}
-  .msg.ok{background:#10281a;border:1px solid #1f5c33;color:#7ee2a8}
-  .msg.err{background:#2a1416;border:1px solid #6e2b2b;color:#ff9a92}
+  .msg.ok{background:var(--ok-bg);border:1px solid var(--ok-line);color:var(--ok-fg)}
+  .msg.err{background:var(--err-bg);border:1px solid var(--err-line);color:var(--err-fg)}
   .muted{color:var(--muted)}
   .spark{display:flex;align-items:flex-end;gap:2px;height:70px}
-  .spark i{flex:1;background:linear-gradient(180deg,var(--acc),#2b5fb8);border-radius:2px 2px 0 0;min-height:1px}
+  .spark i{flex:1;background:linear-gradient(180deg,var(--acc),var(--spark2));border-radius:2px 2px 0 0;min-height:1px}
   .axis{display:flex;gap:2px;color:var(--muted);font-size:10px;margin-top:4px}
   .axis span{flex:1;text-align:center}
+  /* Theme switch: a small pill that shows the mode it will switch to. */
+  #btnTheme{padding:7px 11px;line-height:1;font-size:14px}
 </style>
 </head>
 <body>
@@ -58,6 +80,7 @@
   <span class="badge" id="dbgBadge">debug —</span>
   <span class="badge" id="upBadge">运行 —</span>
   <div class="spacer"></div>
+  <button class="act" id="btnTheme" title="切换深浅模式">🌙</button>
   <button class="act" id="btnRefresh">刷新</button>
 </header>
 
@@ -74,7 +97,7 @@
   <!-- 仪表盘 -->
   <section id="tab-dash">
     <div class="grid">
-      <div class="card"><div class="label">kixdns 转发查询<span class="muted" title="dnsmasq 转发给 kixdns 的查询数，即 kixdns 实际收到的查询">(?)</span></div><div class="value" id="mQueries">—</div><div class="sub" id="mQps">—</div></div>
+      <div class="card"><div class="label">kixdns 转发查询</div><div class="value" id="mQueries">—</div><div class="sub" id="mQps">—</div></div>
       <div class="card"><div class="label">kixdns 缓存命中率</div><div class="value" id="mRatio">—</div><div class="sub" id="mRatioSub">—</div></div>
       <div class="card"><div class="label">kixdns 处理延迟<span class="muted" title="从 kixdns 收到查询到给出应答的耗时。不含 dnsmasq 处理与客户端到路由器的无线链路，所以不是客户端到上游的端到端延迟。">(?)</span></div><div class="value" id="mAvg">—</div><div class="sub" id="mMax">—</div></div>
       <div class="card"><div class="label">上游延迟（仅未命中）<span class="muted" title="只有缓存未命中、真正转发到 mihomo 的查询才计入。这是联通卡 + mihomo 链路的往返时间。">(?)</span></div><div class="value" id="mUp">—</div><div class="sub" id="mUpSub">—</div></div>
@@ -384,6 +407,28 @@ $('#tabs').addEventListener('click', (ev) => {
 });
 
 $('#btnRefresh').onclick = () => { loadStatus(); loadStats(); };
+
+// ---- theme ----------------------------------------------------------------
+// The saved choice wins; with nothing saved, follow the system preference and
+// keep following it until the user picks a side.
+const themeMQ = window.matchMedia('(prefers-color-scheme: light)');
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  $('#btnTheme').textContent = t === 'light' ? '☀' : '🌙';
+  $('#btnTheme').title = t === 'light' ? '当前浅色，点击切到深色' : '当前深色，点击切到浅色';
+}
+function savedTheme() {
+  try { return localStorage.getItem('kixdns-theme'); } catch (e) { return null; }
+}
+applyTheme(savedTheme() || (themeMQ.matches ? 'light' : 'dark'));
+$('#btnTheme').onclick = () => {
+  const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+  try { localStorage.setItem('kixdns-theme', next); } catch (e) { /* private mode */ }
+};
+themeMQ.addEventListener('change', (e) => {
+  if (!savedTheme()) applyTheme(e.matches ? 'light' : 'dark');
+});
 $('#btnLog').onclick = loadLog;
 $('#logFile').onchange = loadLog;
 $('#logLines').onchange = loadLog;
