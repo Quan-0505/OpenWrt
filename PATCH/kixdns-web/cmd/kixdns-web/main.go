@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	// Embeds the IANA timezone database. OpenWrt images routinely ship without
 	// /usr/share/zoneinfo, and Go cannot fall back to a POSIX TZ string, so
@@ -51,6 +52,44 @@ type app struct {
 	readOnly  bool
 	keepLogs  int
 	logCap    int64
+
+	// Baseline of dnsmasq's cumulative counters, used to report per-session
+	// figures. dnsmasq's counters cover its own lifetime, which has nothing to do
+	// with kixdns's, so raw values in the chain table describe a different window
+	// than the rest of the rows — that mismatch is what made row 2 read 121 while
+	// the console showed 13 queries.
+	dmMu       sync.Mutex
+	dmBaseSet  bool
+	dmBaseFwd  int64
+	dmBaseLoc  int64
+	dmBaseSess int64 // kixdns session length when the baseline was taken
+}
+
+// dnsmasqSession reports dnsmasq's counters restricted to the current kixdns
+// session, taking a fresh baseline whenever the session changes.
+func (a *app) dnsmasqSession() (fwd, loc int64, known bool) {
+	m, _, _ := a.dnsmasq.Sample()
+	sess := a.stats.Snapshot().SessionSeconds
+
+	a.dmMu.Lock()
+	defer a.dmMu.Unlock()
+	if m == nil {
+		return 0, 0, false
+	}
+	// A shorter session than the baseline's means kixdns restarted (or the
+	// console did): rebase so both figures start from zero together.
+	if !a.dmBaseSet || sess < a.dmBaseSess {
+		a.dmBaseFwd, a.dmBaseLoc = m.QueriesForwarded, m.LocalAnswered
+		a.dmBaseSess, a.dmBaseSet = sess, true
+	}
+	fwd, loc = m.QueriesForwarded-a.dmBaseFwd, m.LocalAnswered-a.dmBaseLoc
+	if fwd < 0 {
+		fwd = 0 // dnsmasq itself restarted under us
+	}
+	if loc < 0 {
+		loc = 0
+	}
+	return fwd, loc, true
 }
 
 func main() {
@@ -348,7 +387,17 @@ func (a *app) api(w http.ResponseWriter, r *http.Request) {
 		})
 
 	case "dnsmasq":
-		writeJSON(w, 200, a.dnsmasq.Snapshot())
+		v := a.dnsmasq.Snapshot()
+		// Add the per-session view so the chain table's first two rows describe
+		// the same window as the rest of the rows.
+		fwd, loc, known := a.dnsmasqSession()
+		type viewWithSession struct {
+			dnsmasq.View
+			SessionForwarded int64 `json:"session_forwarded"`
+			SessionLocal     int64 `json:"session_local"`
+			SessionKnown     bool  `json:"session_known"`
+		}
+		writeJSON(w, 200, viewWithSession{v, fwd, loc, known})
 
 	case "stats":
 		if err := a.stats.Refresh(); err != nil {
