@@ -37,6 +37,10 @@ type Counter struct {
 type State struct {
 	Offset int64  `json:"offset"`
 	File   string `json:"file"`
+	// ProcStart is a change-token (mtime of /proc/<pid>) for the monitored
+	// process. When it changes, the log file belongs to a previous session
+	// and Offset must be discarded.
+	ProcStart int64 `json:"proc_start"`
 
 	StartTS int64 `json:"start_ts"`
 	LastTS  int64 `json:"last_ts"`
@@ -262,10 +266,36 @@ type Collector struct {
 	LogDir    string // directory containing kixdns log files
 	StatePath string // where aggregated state is persisted
 
-	mu      sync.Mutex
-	state   *State
-	loc     *time.Location
+	mu    sync.Mutex
+	state *State
+	loc   *time.Location
+
+	// ProcDir, when set, is watched for restarts. Any change to its mtime
+	// means the process was replaced, which invalidates the stored offset.
+	ProcDir string
 	lastErr string
+}
+
+// procStart returns a change-token for the monitored process, or 0 when it
+// is not running.
+func (c *Collector) procStart() int64 {
+	if c.ProcDir == "" {
+		return 0
+	}
+	fi, err := os.Stat(c.ProcDir)
+	if err != nil {
+		return 0
+	}
+	return fi.ModTime().UnixNano()
+}
+
+// SetProcPID points the collector at a live PID so restarts can be detected.
+func (c *Collector) SetProcPID(pid int) {
+	if pid > 0 {
+		c.ProcDir = filepath.Join("/proc", strconv.Itoa(pid))
+	} else {
+		c.ProcDir = ""
+	}
 }
 
 // NewCollector loads persisted state (if any) and returns a ready collector.
@@ -342,6 +372,16 @@ func (c *Collector) Refresh() error {
 	}
 
 	s := c.state
+	// A restarted process keeps appending to the same file, so a stale offset
+	// would silently skip everything written before it. Detect the restart
+	// and re-read the current file from the start.
+	if ps := c.procStart(); ps != 0 {
+		if s.ProcStart != 0 && ps != s.ProcStart {
+			s.Offset = 0
+		}
+		s.ProcStart = ps
+	}
+
 	// Rotation or truncation: restart from the beginning of the new file.
 	if s.File != file || info.Size() < s.Offset {
 		s.Offset = 0
