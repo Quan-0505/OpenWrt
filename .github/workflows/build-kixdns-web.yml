@@ -1,0 +1,102 @@
+name: Build kixdns-web
+
+# Cross-compiles the kixdns-web console for the architectures shipped by this
+# firmware repository, runs the parser test-suite, and attaches the binaries to
+# the workflow run (and to a release when triggered by a tag).
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'PATCH/kixdns-web/**'
+      - '.github/workflows/build-kixdns-web.yml'
+    branches:
+      - '**'
+  pull_request:
+    paths:
+      - 'PATCH/kixdns-web/**'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: Test parser
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: PATCH/kixdns-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: PATCH/kixdns-web/go.sum
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "these files need gofmt:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: vet
+        run: go vet ./...
+
+      - name: test
+        run: go test ./... -v
+
+  build:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: linux, goarch: arm64,  name: kixdns-web-linux-arm64,  ipk_arch: aarch64_cortex-a53 }
+          - { goos: linux, goarch: amd64,  name: kixdns-web-linux-amd64,  ipk_arch: x86_64 }
+          - { goos: linux, goarch: arm,    name: kixdns-web-linux-armv7,  ipk_arch: arm_cortex-a7 }
+          - { goos: linux, goarch: mipsle, name: kixdns-web-linux-mipsle, ipk_arch: mipsel_24kc }
+          - { goos: freebsd, goarch: amd64, name: kixdns-web-freebsd-amd64, ipk_arch: freebsd }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build
+        working-directory: PATCH/kixdns-web
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags "-s -w" -o "dist/${{ matrix.name }}" ./cmd/kixdns-web
+          file "dist/${{ matrix.name }}"
+          if readelf -d "dist/${{ matrix.name }}" 2>/dev/null | grep -q NEEDED; then
+            echo "::error::binary is dynamically linked"; exit 1
+          fi
+          echo "static binary OK"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: PATCH/kixdns-web/dist/${{ matrix.name }}
+          if-no-files-found: error
+
+  release:
+    name: Attach to release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*

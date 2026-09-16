@@ -1,0 +1,7 @@
+# build output
+/dist/
+*.exe
+
+# local state
+*.tmp
+.validate-*.json

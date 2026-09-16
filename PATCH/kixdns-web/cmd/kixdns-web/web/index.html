@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KixDNS 控制台</title>
+<style>
+  :root{--bg:#0f1115;--card:#181b22;--fg:#e6e8ee;--muted:#8b93a7;--acc:#4f8cff;--ok:#3fb950;--warn:#d29922;--err:#f85149;--line:#262a33}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI",Roboto,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif}
+  header{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+  header h1{font-size:16px;margin:0;font-weight:600}
+  .spacer{flex:1}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;background:#20242e;border:1px solid var(--line)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+  .dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+  .dot.off{background:var(--err)}
+  nav{display:flex;gap:4px;padding:10px 20px 0;background:var(--card);border-bottom:1px solid var(--line);overflow-x:auto}
+  nav button{background:none;border:0;color:var(--muted);padding:8px 14px;cursor:pointer;font-size:14px;border-bottom:2px solid transparent;white-space:nowrap}
+  nav button.active{color:var(--fg);border-bottom-color:var(--acc)}
+  main{padding:20px;max-width:1200px;margin:0 auto}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .card .label{color:var(--muted);font-size:12px;margin-bottom:6px}
+  .card .value{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+  .card .sub{color:var(--muted);font-size:12px;margin-top:4px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.row{grid-template-columns:1fr}}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:500}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .bar{height:6px;border-radius:3px;background:var(--acc);min-width:2px}
+  .barwrap{background:#20242e;border-radius:3px;overflow:hidden;width:70px;display:inline-block;vertical-align:middle}
+  pre{background:#0b0d11;border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;max-height:52vh;font-size:12px;line-height:1.45}
+  textarea{width:100%;min-height:48vh;background:#0b0d11;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
+  button.act{background:#20242e;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px}
+  button.act:hover{border-color:var(--acc)}
+  button.act.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+  button.act.danger{color:var(--err);border-color:#5a2a2a}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .msg{padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;display:none}
+  .msg.show{display:block}
+  .msg.ok{background:#10281a;border:1px solid #1f5c33;color:#7ee2a8}
+  .msg.err{background:#2a1416;border:1px solid #6e2b2b;color:#ff9a92}
+  .muted{color:var(--muted)}
+  .spark{display:flex;align-items:flex-end;gap:2px;height:70px}
+  .spark i{flex:1;background:linear-gradient(180deg,var(--acc),#2b5fb8);border-radius:2px 2px 0 0;min-height:1px}
+  .axis{display:flex;gap:2px;color:var(--muted);font-size:10px;margin-top:4px}
+  .axis span{flex:1;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <h1>KixDNS 控制台</h1>
+  <span class="badge"><i class="dot" id="dot"></i><span id="stateText">读取中…</span></span>
+  <span class="badge" id="verBadge">版本 —</span>
+  <span class="badge" id="dbgBadge">debug —</span>
+  <div class="spacer"></div>
+  <button class="act" id="btnRefresh">刷新</button>
+</header>
+
+<nav id="tabs">
+  <button data-tab="dash" class="active">仪表盘</button>
+  <button data-tab="log">查询日志</button>
+  <button data-tab="cfg">Pipeline 配置</button>
+  <button data-tab="svc">服务</button>
+</nav>
+
+<main>
+  <div class="msg" id="msg"></div>
+
+  <!-- 仪表盘 -->
+  <section id="tab-dash">
+    <div class="grid">
+      <div class="card"><div class="label">客户端请求</div><div class="value" id="mQueries">—</div><div class="sub" id="mQps">—</div></div>
+      <div class="card"><div class="label">缓存命中率</div><div class="value" id="mRatio">—</div><div class="sub" id="mRatioSub">—</div></div>
+      <div class="card"><div class="label">端到端延迟</div><div class="value" id="mAvg">—</div><div class="sub" id="mMax">—</div></div>
+      <div class="card"><div class="label">慢查询 &gt;500ms</div><div class="value" id="mSlow">—</div><div class="sub" id="mUp">—</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="label">查询趋势（按小时）</div>
+      <div class="spark" id="spark"></div>
+      <div class="axis" id="axis"></div>
+    </div>
+
+    <div class="row">
+      <div class="card">
+        <div class="label">Top 域名</div>
+        <table><tbody id="tDomains"></tbody></table>
+      </div>
+      <div class="card">
+        <div class="label">Top 客户端</div>
+        <table><tbody id="tClients"></tbody></table>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <div class="card">
+        <div class="label">查询类型</div>
+        <table><tbody id="tQtype"></tbody></table>
+      </div>
+      <div class="card">
+        <div class="label">上游 / 响应码</div>
+        <table><tbody id="tUp"></tbody></table>
+        <table style="margin-top:10px"><tbody id="tRcode"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 查询日志 -->
+  <section id="tab-log" style="display:none">
+    <div class="toolbar">
+      <select id="logFile" class="act"></select>
+      <select id="logLines" class="act">
+        <option value="100">100 行</option>
+        <option value="300" selected>300 行</option>
+        <option value="1000">1000 行</option>
+        <option value="5000">5000 行</option>
+      </select>
+      <button class="act primary" id="btnLog">加载</button>
+      <label class="muted"><input type="checkbox" id="autoLog"> 自动刷新（5s）</label>
+      <span class="muted" id="logMeta"></span>
+    </div>
+    <pre id="logBody">—</pre>
+  </section>
+
+  <!-- 配置 -->
+  <section id="tab-cfg" style="display:none">
+    <div class="toolbar">
+      <button class="act" id="btnCfgLoad">重新载入</button>
+      <button class="act" id="btnCfgValidate">校验</button>
+      <button class="act primary" id="btnCfgSave">保存</button>
+      <span class="muted" id="cfgMeta"></span>
+    </div>
+    <textarea id="cfgBody" spellcheck="false"></textarea>
+    <div class="muted" style="margin-top:8px;font-size:12px">
+      保存前会先做 JSON 校验 + <code>kixdns -t</code> 语义校验；通过后原子写入并保留带时间戳的备份。kixdns 会热重载该文件。
+    </div>
+  </section>
+
+  <!-- 服务 -->
+  <section id="tab-svc" style="display:none">
+    <div class="toolbar">
+      <button class="act primary" id="btnStart">启动</button>
+      <button class="act" id="btnStop">停止</button>
+      <button class="act" id="btnRestart">重启</button>
+      <label class="muted"><input type="checkbox" id="debugMode"> debug 模式（开启后才有统计数据）</label>
+      <button class="act" id="btnResetStats">重置统计</button>
+    </div>
+    <div class="card">
+      <div class="label">状态</div>
+      <table><tbody id="tSvc"></tbody></table>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="label">日志文件与磁盘占用</div>
+      <table><tbody id="tLogs"></tbody></table>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const api = async (p, opt) => {
+  const r = await fetch('api/' + p, opt);
+  if (!r.ok) throw new Error((await r.text()) || r.statusText);
+  return r.json();
+};
+const fmt = (n) => (n == null ? '—' : Number(n).toLocaleString());
+const ms = (us) => (us == null ? '—' : (us / 1000).toFixed(us < 10000 ? 2 : 1) + ' ms');
+const bytes = (b) => { if (b == null) return '—'; const u = ['B', 'KB', 'MB', 'GB']; let i = 0; while (b >= 1024 && i < 3) { b /= 1024; i++; } return b.toFixed(i ? 1 : 0) + ' ' + u[i]; };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function toast(text, ok = true) {
+  const m = $('#msg'); m.textContent = text; m.className = 'msg show ' + (ok ? 'ok' : 'err');
+  clearTimeout(toast._t); toast._t = setTimeout(() => m.classList.remove('show'), 4000);
+}
+
+function bars(tbody, rows, total) {
+  const el = $(tbody); el.innerHTML = '';
+  if (!rows || !rows.length) { el.innerHTML = '<tr><td class="muted">暂无数据</td></tr>'; return; }
+  const max = Math.max(...rows.map((r) => r.count), 1);
+  for (const r of rows) {
+    const pct = total ? ((r.count / total) * 100).toFixed(1) + '%' : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td title="${esc(r.name)}" style="max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name)}</td>
+      <td class="num">${fmt(r.count)}</td>
+      <td style="width:90px"><span class="barwrap"><span class="bar" style="width:${(r.count / max) * 100}%"></span></span></td>
+      <td class="num muted">${pct}</td>`;
+    el.appendChild(tr);
+  }
+}
+
+async function loadStatus() {
+  try {
+    const s = await api('status');
+    const svc = s.service;
+    $('#dot').className = 'dot ' + (svc.running ? 'on' : 'off');
+    $('#stateText').textContent = svc.running ? '运行中' : '已停止';
+    $('#verBadge').textContent = '版本 ' + (svc.version || '—');
+    $('#dbgBadge').textContent = 'debug ' + (svc.debug ? '开' : '关');
+    $('#debugMode').checked = !!svc.debug;
+    const rows = [
+      ['运行状态', svc.running ? `运行中 (pid ${svc.pids.join(', ')})` : '已停止'],
+      ['运行时长', svc.uptime_s ? Math.floor(svc.uptime_s / 60) + ' 分 ' + (svc.uptime_s % 60) + ' 秒' : '—'],
+      ['debug 模式', svc.debug ? '开启（产生统计数据）' : '关闭（无统计数据）'],
+      ['二进制', s.paths.bin || '—'],
+      ['工作目录', s.paths.workdir || '—'],
+      ['配置文件', s.paths.config || '—'],
+      ['日志目录', s.paths.logdir || '—'],
+      ['状态文件', s.paths.state || '—'],
+      ['只读模式', s.readonly ? '是' : '否'],
+    ];
+    $('#tSvc').innerHTML = rows.map(([k, v]) => `<tr><th style="width:130px">${k}</th><td>${esc(v)}</td></tr>`).join('');
+    const sel = $('#logFile'); const cur = sel.value;
+    sel.innerHTML = (s.log_files || []).map((f) => `<option value="${esc(f.path)}">${esc(f.name)} (${bytes(f.size)})</option>`).join('');
+    if (cur) sel.value = cur;
+    $('#tLogs').innerHTML = (s.log_files || []).map((f) =>
+      `<tr><td>${esc(f.name)}</td><td class="num">${bytes(f.size)}</td><td class="muted">${new Date(f.mod_time * 1000).toLocaleString()}</td></tr>`).join('')
+      || '<tr><td class="muted">无日志文件</td></tr>';
+    return s;
+  } catch (e) { toast('状态读取失败: ' + e.message, false); }
+}
+
+async function loadStats() {
+  try {
+    const d = await api('stats');
+    $('#mQueries').textContent = fmt(d.queries);
+    $('#mQps').textContent = d.qps ? d.qps.toFixed(2) + ' 次/秒' : '—';
+    $('#mRatio').textContent = d.cache_hit || d.cache_miss ? d.cache_ratio.toFixed(1) + '%' : '—';
+    $('#mRatioSub').textContent = `命中 ${fmt(d.cache_hit)} / 未命中 ${fmt(d.cache_miss)}`;
+    $('#mAvg').textContent = d.avg_us ? ms(d.avg_us) : '—';
+    $('#mMax').textContent = '最大 ' + (d.max_us ? ms(d.max_us) : '—');
+    $('#mSlow').textContent = fmt(d.slow);
+    $('#mUp').textContent = `上游 成功 ${fmt(d.up_ok)} / 失败 ${fmt(d.up_fail)}，均值 ${d.avg_up_us ? ms(d.avg_up_us) : '—'}`;
+    if (d.error) toast('统计警告: ' + d.error, false);
+
+    const h = d.hourly || []; const max = Math.max(...h, 1);
+    $('#spark').innerHTML = h.map((v) => `<i style="height:${Math.max((v / max) * 100, 1)}%" title="${v}"></i>`).join('');
+    $('#axis').innerHTML = h.map((_, i) => `<span>${i % 3 === 0 ? String(i).padStart(2, '0') : ''}</span>`).join('');
+
+    bars('#tDomains', d.domains, d.queries);
+    bars('#tClients', d.clients, d.queries);
+    bars('#tQtype', d.qtype, d.queries);
+    bars('#tUp', d.upstreams, d.up_ok + d.up_fail);
+    bars('#tRcode', d.rcodes, d.up_ok + d.up_fail);
+  } catch (e) { toast('统计读取失败: ' + e.message, false); }
+}
+
+async function loadLog() {
+  try {
+    const file = $('#logFile').value || '';
+    const lines = $('#logLines').value;
+    const d = await api(`logs?lines=${lines}&file=${encodeURIComponent(file)}`);
+    $('#logBody').textContent = (d.lines || []).join('\n') || '(空)';
+    $('#logMeta').textContent = `${(d.lines || []).length} 行`;
+  } catch (e) { toast('日志读取失败: ' + e.message, false); }
+}
+
+async function loadCfg() {
+  try {
+    const d = await api('config');
+    $('#cfgBody').value = d.raw || '';
+    $('#cfgMeta').textContent = d.backups && d.backups.length ? `备份 ${d.backups.length} 个` : '无备份';
+  } catch (e) { toast('配置读取失败: ' + e.message, false); }
+}
+
+async function validateCfg() {
+  try {
+    const r = await api('config/validate', { method: 'POST', body: $('#cfgBody').value });
+    r.valid ? toast('校验通过') : toast('校验失败: ' + r.error, false);
+  } catch (e) { toast('校验请求失败: ' + e.message, false); }
+}
+
+async function saveCfg() {
+  if (!confirm('保存并让 kixdns 热重载该配置？')) return;
+  try {
+    await api('config', { method: 'POST', body: $('#cfgBody').value });
+    toast('已保存，kixdns 将热重载');
+    loadCfg();
+  } catch (e) { toast('保存失败: ' + e.message, false); }
+}
+
+async function svcAct(act) {
+  if (act !== 'start' && !confirm(`确认${act === 'stop' ? '停止' : '重启'} kixdns？`)) return;
+  try {
+    const dbg = $('#debugMode').checked ? '?debug=1' : '';
+    await api('service/' + act + dbg, { method: 'POST' });
+    toast('操作完成');
+    loadStatus(); loadStats();
+  } catch (e) { toast('操作失败: ' + e.message, false); }
+}
+
+// tabs
+$('#tabs').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-tab]'); if (!b) return;
+  document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('active', x === b));
+  for (const s of document.querySelectorAll('main > section')) s.style.display = 'none';
+  $('#tab-' + b.dataset.tab).style.display = '';
+  if (b.dataset.tab === 'log') loadLog();
+  if (b.dataset.tab === 'cfg') loadCfg();
+  if (b.dataset.tab === 'svc') loadStatus();
+});
+
+$('#btnRefresh').onclick = () => { loadStatus(); loadStats(); };
+$('#btnLog').onclick = loadLog;
+$('#logFile').onchange = loadLog;
+$('#logLines').onchange = loadLog;
+$('#btnCfgLoad').onclick = loadCfg;
+$('#btnCfgValidate').onclick = validateCfg;
+$('#btnCfgSave').onclick = saveCfg;
+$('#btnStart').onclick = () => svcAct('start');
+$('#btnStop').onclick = () => svcAct('stop');
+$('#btnRestart').onclick = () => svcAct('restart');
+$('#btnResetStats').onclick = async () => {
+  if (!confirm('重置统计数据（不影响 kixdns 运行）？')) return;
+  try { await api('stats/reset', { method: 'POST' }); toast('统计已重置'); loadStats(); }
+  catch (e) { toast('重置失败: ' + e.message, false); }
+};
+
+let autoTimer = null;
+$('#autoLog').onchange = (e) => {
+  clearInterval(autoTimer);
+  if (e.target.checked) autoTimer = setInterval(loadLog, 5000);
+};
+
+loadStatus().then(loadStats);
+setInterval(() => { loadStats(); loadStatus(); }, 10000);
+</script>
+</body>
+</html>
