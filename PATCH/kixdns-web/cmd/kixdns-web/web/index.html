@@ -79,6 +79,7 @@
   <span class="badge" id="verBadge">版本 —</span>
   <span class="badge" id="dbgBadge">debug —</span>
   <span class="badge" id="upBadge">运行 —</span>
+  <span class="badge" id="clockBadge">本机 —</span>
   <div class="spacer"></div>
   <!-- Restarts the kixdns process, not the page. Distinct from 刷新 (re-fetches
        data) and from 服务 页's 重启 (same call, but that one relies on the debug
@@ -236,6 +237,28 @@ function bars(tbody, rows, total) {
   }
 }
 
+// Device clock: the server's wall time, advanced locally between polls so the
+// badge ticks every second.
+//
+// The timezone comes from the server too. Formatting the server's epoch with the
+// browser's clock would show the browser's zone (a UTC+8 host rendered the
+// device's UTC time as 19:02 next to a "UTC" label — eight hours wrong), so the
+// server's offset is applied explicitly instead.
+let clockSkewMs = null;
+let clockTZ = '';
+let clockOffsetS = null;
+
+function renderClock() {
+  const el = $('#clockBadge');
+  if (clockSkewMs === null || clockOffsetS === null) { el.textContent = '本机 —'; return; }
+  // Shift into the device's zone, then read the UTC fields: this makes the
+  // displayed digits independent of the browser's own timezone.
+  const d = new Date(Date.now() + clockSkewMs + clockOffsetS * 1000);
+  const p = (n) => String(n).padStart(2, '0');
+  el.textContent = `本机 ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}` +
+    (clockTZ ? ' ' + clockTZ : '');
+}
+
 async function loadStatus() {
   try {
     const s = await api('status');
@@ -247,6 +270,15 @@ async function loadStatus() {
     // kixdns uptime, shown next to the debug badge (computed from the process
     // start time, so it survives page reloads and resets only on restart).
     $('#upBadge').textContent = svc.running ? '运行 ' + dur(svc.uptime_s) : '未运行';
+    // The device clock. Its offset from ours is recorded, so the badge ticks
+    // every second without trusting the browser's timezone or clock: the value
+    // shown is the server's time, advanced locally between polls.
+    if (s.server_time) {
+      clockSkewMs = s.server_time * 1000 - Date.now();
+      clockTZ = s.tz || '';
+      clockOffsetS = typeof s.tz_offset_s === 'number' ? s.tz_offset_s : 0;
+      renderClock();
+    }
     $('#debugMode').checked = !!svc.debug;
     const rows = [
       ['运行状态', svc.running ? `运行中 (pid ${svc.pids.join(', ')})` : '已停止'],
@@ -482,6 +514,8 @@ $('#autoLog').onchange = (e) => setAutoLog(e.target.checked);
 loadStatus().then(() => { loadStats(); loadChain(); });
 // Dashboard refresh: every 3 seconds.
 setInterval(() => { loadStats(); loadStatus(); loadChain(); }, 3000);
+// The device clock ticks every second; loadStatus() only corrects its offset.
+setInterval(renderClock, 1000);
 // The query-log tab may be the active view on load; start its timer so the
 // checkbox state and the actual behaviour agree.
 if ($('#autoLog').checked && $('#tab-log').style.display !== 'none') setAutoLog(true);
