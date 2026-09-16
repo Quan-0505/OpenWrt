@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // realLines is a short slice of kixdns's own output: two requests, with all the
@@ -29,6 +30,10 @@ func TestHourlyCountsQueriesNotLines(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := NewCollector(dir, filepath.Join(dir, "s.json"))
+	// Pin the bucket zone. The log stamps are UTC ("…T10:00:00Z"), so without
+	// this the expected hour would depend on the machine's own timezone — the
+	// test would pass on a UTC box and fail on anything else.
+	c.loc = time.UTC
 	if err := c.Refresh(); err != nil {
 		t.Fatal(err)
 	}

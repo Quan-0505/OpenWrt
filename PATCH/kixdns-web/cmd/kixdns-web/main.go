@@ -27,6 +27,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	// Embeds the IANA timezone database. OpenWrt images routinely ship without
+	// /usr/share/zoneinfo, and Go cannot fall back to a POSIX TZ string, so
+	// without this a named zone like Asia/Shanghai is unresolvable and the
+	// console would silently report UTC.
+	_ "time/tzdata"
 
 	"kixdns-web/internal/dnsmasq"
 	"kixdns-web/internal/service"
@@ -63,8 +68,19 @@ func main() {
 		keepLogs = flag.Int("keep-logs", 2, "rotated log files to keep (active + this = total days retained)")
 		logCapMB = flag.Int64("log-cap-mb", 24, "rotate the active log when it exceeds this size (MB)")
 		check    = flag.Bool("check", false, "validate configuration and exit")
+		tzName   = flag.String("tz", envOr("KIXDNS_TZ", "Asia/Shanghai"), "timezone for log bucketing and the console clock")
 	)
 	flag.Parse()
+
+	// Resolve the timezone before anything reads the clock.
+	//
+	// This has to be explicit on OpenWrt: a Go binary does not parse POSIX TZ
+	// strings the way libc does, and these devices ship no /usr/share/zoneinfo,
+	// so time.Local stays UTC no matter what TZ says. Measured with a minimal Go
+	// program on the device: TZ=CST-8 gave offset 0, while busybox date with the
+	// same variable gave +0800. The embedded tzdata (see the import) is what
+	// makes the named zone resolvable at all.
+	resolveTimezone(*tzName)
 
 	svcMgr := service.New(*bin, *workdir, *config, *logDir, *pidFile)
 	if *state == "" {
@@ -273,6 +289,31 @@ func serviceAction(path string) string {
 func tzOffsetSeconds() int {
 	_, off := time.Now().Zone()
 	return off
+}
+
+// resolveTimezone points time.Local at the requested zone, falling back to a
+// fixed offset when the name cannot be resolved.
+//
+// time.Local is what the stats collector buckets log lines into, so getting this
+// right is what keeps the hourly trend on the operator's clock.
+func resolveTimezone(name string) {
+	if name == "" || name == "UTC" {
+		time.Local = time.UTC
+		return
+	}
+	if loc, err := time.LoadLocation(name); err == nil {
+		time.Local = loc
+		return
+	}
+	// A fixed offset keeps the console usable even without zone data. Only the
+	// well-known +08:00 case is worth encoding; anything else stays UTC.
+	if name == "Asia/Shanghai" || name == "CST-8" || name == "PRC" {
+		time.Local = time.FixedZone("CST", 8*3600)
+		log.Printf("timezone %q not resolvable, using a fixed +08:00 offset", name)
+		return
+	}
+	log.Printf("timezone %q not resolvable, staying on UTC", name)
+	time.Local = time.UTC
 }
 
 func (a *app) api(w http.ResponseWriter, r *http.Request) {
