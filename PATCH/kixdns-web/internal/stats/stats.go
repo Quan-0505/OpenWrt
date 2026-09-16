@@ -123,6 +123,23 @@ func sessionSeconds(s *State) int64 {
 	return time.Now().Unix() - s.SessionStartTS
 }
 
+// procStartUnix converts the process start token into a wall-clock second.
+//
+// The token is the mtime of /proc/<pid> in nanoseconds since the epoch — not a
+// since-boot counter — so this is a plain scale, no /proc/uptime involved.
+// Confirmed on the device: the recorded token divided by 1e9 gave exactly the
+// process's start second, and epoch-minus-that matched the uptime badge.
+//
+// Stamping the session with time.Now() when the collector happened to notice the
+// process made it lag by however long detection took — measured 113 seconds on
+// the device, so the row claimed a shorter run than the badge.
+func procStartUnix(procStartNS int64) int64 {
+	if procStartNS <= 0 {
+		return 0
+	}
+	return procStartNS / int64(time.Second)
+}
+
 const slowThresholdUS = 500000
 
 // recentWindow is how many of the most recent cache decisions the rolling hit
@@ -480,13 +497,19 @@ func (c *Collector) Refresh() error {
 			// end of the file: the new process may have written lines before we
 			// noticed the restart, and those belong to it and must still count.
 			s.SessionStart = s.ReadPos
-			s.SessionStartTS = time.Now().Unix()
+			s.SessionStartTS = procStartUnix(ps)
 			s.sessionReset()
 		}
 		s.ProcStart = ps
 	}
 	if s.SessionStartTS == 0 {
-		s.SessionStartTS = time.Now().Unix()
+		// First run observed (no restart yet). Anchor to the process's own start
+		// time when we can read it, so this matches the uptime badge instead of
+		// counting from whenever the collector first looked.
+		s.SessionStartTS = procStartUnix(s.ProcStart)
+		if s.SessionStartTS == 0 {
+			s.SessionStartTS = time.Now().Unix()
+		}
 	}
 
 	if s.File != file || info.Size() < s.ReadPos {
