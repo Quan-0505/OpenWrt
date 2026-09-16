@@ -114,7 +114,7 @@
     </div>
 
     <div class="card" style="margin-bottom:14px">
-      <div class="label">查询趋势（按小时）</div>
+      <div class="label">查询趋势（按小时）<span class="muted" id="trendTZ"></span></div>
       <div class="spark" id="spark"></div>
       <div class="axis" id="axis"></div>
     </div>
@@ -247,6 +247,12 @@ function bars(tbody, rows, total) {
 let clockSkewMs = null;
 let clockTZ = '';
 let clockOffsetS = null;
+// Timezone offsets in seconds east of UTC: the device's (from /api/status) and
+// this browser's. The hourly trend is bucketed by the device's local hour, so
+// the difference is what has to be rotated for the chart to read in the
+// viewer's own time.
+let deviceTZOffsetS = null;
+let hostTZOffsetS = -new Date().getTimezoneOffset() * 60;
 
 function renderClock() {
   const el = $('#clockBadge');
@@ -277,6 +283,7 @@ async function loadStatus() {
       clockSkewMs = s.server_time * 1000 - Date.now();
       clockTZ = s.tz || '';
       clockOffsetS = typeof s.tz_offset_s === 'number' ? s.tz_offset_s : 0;
+      deviceTZOffsetS = clockOffsetS;
       renderClock();
     }
     $('#debugMode').checked = !!svc.debug;
@@ -367,11 +374,45 @@ async function loadStats() {
       : `上游成功 ${fmt(d.up_ok)} / 失败 ${fmt(d.up_fail)}`;
     if (d.error) toast('统计警告: ' + d.error, false);
 
-    const h = d.hourly || []; const max = Math.max(...h, 1);
+    // Hourly trend, rotated into the viewer's timezone.
+    //
+    // The buckets are indexed by the device's local hour, and this device runs on
+    // UTC while the operator is on UTC+8, so a bar drawn at 10 was really 18:00
+    // for the person reading it. The rotation is exact for fixed-offset zones:
+    // shifting every bucket by the same number of hours is the same as
+    // re-indexing each query's timestamp into the viewer's zone.
+    const rawH = d.hourly || [];
+    const rot = h => {
+      // null means "not known yet"; 0 is a real offset (UTC). A falsy check here
+      // silently disabled the rotation for UTC devices — which is this device,
+      // so the chart stayed eight hours off.
+      if (deviceTZOffsetS === null || hostTZOffsetS === null) return h.slice();
+      if (deviceTZOffsetS === hostTZOffsetS) return h.slice();
+      const shift = Math.round((hostTZOffsetS - deviceTZOffsetS) / 3600);
+      const n = h.length;
+      const out = new Array(n).fill(0);
+      for (let i = 0; i < n; i++) out[(((i + shift) % n) + n) % n] = h[i];
+      return out;
+    };
+    const h = rot(rawH);
+    const max = Math.max(...h, 1);
     $('#spark').innerHTML = h.map((v, i) => `<i style="height:${Math.max((v / max) * 100, 1)}%" title="${String(i).padStart(2, '0')}:00 — ${v} 次"></i>`).join('');
     // One label per hour bucket: the bars are already hourly, so labelling every
     // third one made the trend look like it covered three-hour steps.
     $('#axis').innerHTML = h.map((_, i) => `<span>${String(i).padStart(2, '0')}</span>`).join('');
+    // Say whose clock the axis is on, and say when we could not rotate it.
+    const tzNote = $('#trendTZ');
+    if (tzNote) {
+      if (deviceTZOffsetS === null) {
+        tzNote.textContent = '';
+      } else if (deviceTZOffsetS === hostTZOffsetS) {
+        tzNote.textContent = ' · 本机时间';
+      } else {
+        const dev = deviceTZOffsetS / 3600, host = hostTZOffsetS / 3600;
+        const f = (v) => (v >= 0 ? 'UTC+' : 'UTC') + v;
+        tzNote.textContent = ` · 本机时间（${f(host)}，设备为 ${f(dev)}，已换算）`;
+      }
+    }
 
     bars('#tDomains', d.domains, d.queries);
     bars('#tClients', d.clients, d.queries);
