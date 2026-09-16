@@ -59,6 +59,11 @@ type State struct {
 	// with cache=true). Cumulative, not current occupancy.
 	CacheWritten int64 `json:"cache_written"`
 
+	// RecentHits is a rolling window over the most recent cache decisions
+	// (1 = hit, 0 = miss), giving a ratio that tracks current traffic instead
+	// of everything since startup.
+	RecentHits []int64 `json:"recent_hits"`
+
 	QT map[string]int64 `json:"qtype"`
 	RC map[string]int64 `json:"rcode"`
 	IP map[string]int64 `json:"clients"`
@@ -72,6 +77,10 @@ type State struct {
 }
 
 const slowThresholdUS = 500000
+
+// recentWindow is how many of the most recent cache decisions the rolling hit
+// ratio covers: stable enough to trust, short enough to react within seconds.
+const recentWindow = 500
 
 func newState() *State {
 	return &State{
@@ -224,8 +233,10 @@ func (s *State) consumeLine(line string, loc *time.Location) {
 		}
 	case "cache_hit":
 		s.CacheHit++
+		s.pushDecision(1)
 	case "cache_miss":
 		s.CacheMiss++
+		s.pushDecision(0)
 	case "request_finished":
 		if st := get("status"); st != "" && st != "Completed" {
 			s.Blocked++
@@ -267,6 +278,15 @@ func (s *State) consumeLine(line string, loc *time.Location) {
 }
 
 // ---------------------------------------------------------------------------
+// pushDecision appends one cache decision (1 = hit, 0 = miss) to the rolling
+// window, dropping the oldest entry once the window is full.
+func (s *State) pushDecision(hit int64) {
+	s.RecentHits = append(s.RecentHits, hit)
+	if len(s.RecentHits) > recentWindow {
+		s.RecentHits = s.RecentHits[len(s.RecentHits)-recentWindow:]
+	}
+}
+
 // collector
 // ---------------------------------------------------------------------------
 
@@ -475,6 +495,11 @@ type Snapshot struct {
 	// cache-entry count, so the UI labels it accordingly.
 	CacheWritten int64 `json:"cache_written"`
 
+	// RecentRatio is the hit ratio over the trailing recentWindow decisions;
+	// RecentSamples is how many decisions it covers (fills up after a restart).
+	RecentRatio   float64 `json:"recent_ratio"`
+	RecentSamples int64   `json:"recent_samples"`
+
 	Error string `json:"error,omitempty"`
 
 	QType     []Counter `json:"qtype"`
@@ -532,6 +557,14 @@ func (c *Collector) Snapshot() Snapshot {
 	}
 	if tot := s.CacheHit + s.CacheMiss; tot > 0 {
 		snap.CacheRatio = float64(s.CacheHit) / float64(tot) * 100
+	}
+	if n := len(s.RecentHits); n > 0 {
+		var hits int64
+		for _, h := range s.RecentHits {
+			hits += h
+		}
+		snap.RecentSamples = int64(n)
+		snap.RecentRatio = float64(hits) / float64(n) * 100
 	}
 	if span := s.LastTS - s.StartTS; span > 0 {
 		snap.QPS = float64(s.Queries) / float64(span)
