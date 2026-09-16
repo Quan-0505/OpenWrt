@@ -101,10 +101,9 @@
   <!-- 仪表盘 -->
   <section id="tab-dash">
     <div class="grid">
-      <div class="card"><div class="label">kixdns 转发查询</div><div class="value" id="mQueries">—</div><div class="sub" id="mQps">—</div></div>
-      <div class="card"><div class="label">kixdns 缓存命中率</div><div class="value" id="mRatio">—</div><div class="sub" id="mRatioSub">—</div></div>
-      <div class="card"><div class="label" title="从 kixdns 收到查询到给出应答的耗时。不含 dnsmasq 处理与客户端到路由器的无线链路，所以不是客户端到上游的端到端延迟。">kixdns 处理延迟</div><div class="value" id="mAvg">—</div><div class="sub" id="mMax">—</div></div>
-      <div class="card"><div class="label" title="只有缓存未命中、真正转发到 mihomo 的查询才计入。这是联通卡 + mihomo 链路的往返时间。">上游延迟（仅未命中）</div><div class="value" id="mUp">—</div><div class="sub" id="mUpSub">—</div></div>
+      <div class="card"><div class="label">客户端请求</div><div class="value" id="mQueries">—</div><div class="sub" id="mQps">—</div></div>
+      <div class="card"><div class="label">缓存命中率</div><div class="value" id="mRatio">—</div><div class="sub" id="mRatioSub">—</div></div>
+      <div class="card"><div class="label" title="从 kixdns 收到查询到给出应答的耗时。不含 dnsmasq 处理与客户端到路由器的无线链路，所以不是客户端到上游的端到端延迟。">端到端延迟</div><div class="value" id="mAvg">—</div><div class="sub" id="mMax">—</div></div>
     </div>
 
     <div class="card" style="margin-bottom:14px">
@@ -312,24 +311,28 @@ async function loadChain() {
 async function loadStats() {
   try {
     const d = await api('stats');
+    // Layout mirrors the OPNsense console: the headline number carries its
+    // composition underneath (hits/misses, upstream time), so a bare figure is
+    // never read on its own.
     $('#mQueries').textContent = fmt(d.queries);
-    $('#mQps').textContent = d.qps ? d.qps.toFixed(2) + ' 次/秒' : '—';
+    $('#mQps').textContent = `${fmt(d.cache_hit)} 命中 / ${fmt(d.cache_miss)} 未命中` +
+      (d.qps ? ` · ${d.qps.toFixed(2)} 次/秒` : '');
     $('#mRatio').textContent = d.cache_hit || d.cache_miss ? d.cache_ratio.toFixed(1) + '%' : '—';
-    $('#mRatioSub').textContent = `命中 ${fmt(d.cache_hit)} / 未命中 ${fmt(d.cache_miss)}`;
+    $('#mRatioSub').textContent = `${fmt(d.domain_count)} 个唯一域名`;
     $('#mAvg').textContent = d.avg_us ? ms(d.avg_us) : '—';
     // The mean is bimodal: cache hits land well under a millisecond while
     // forwarded queries take tens to hundreds. State the composition so the
     // average is not read as a typical client-visible latency.
     $('#mMax').textContent = d.cache_hit || d.cache_miss
-      ? `最大 ${d.max_us ? ms(d.max_us) : '—'} · 其中 ${fmt(d.cache_hit)} 次命中(≈0ms) / ${fmt(d.cache_miss)} 次转发`
-      : `最大 ${d.max_us ? ms(d.max_us) : '—'}`;
-    $('#mUp').textContent = d.avg_up_us ? ms(d.avg_up_us) : '—';
-    $('#mUpSub').textContent = `成功 ${fmt(d.up_ok)} / 失败 ${fmt(d.up_fail)} · 慢查询 ${fmt(d.slow)}`;
+      ? `含缓存命中 · 上游 ${d.avg_up_us ? ms(d.avg_up_us) : '—'} · 慢查询 ${fmt(d.slow)}`
+      : `上游 ${d.avg_up_us ? ms(d.avg_up_us) : '—'} · 慢查询 ${fmt(d.slow)}`;
     if (d.error) toast('统计警告: ' + d.error, false);
 
     const h = d.hourly || []; const max = Math.max(...h, 1);
-    $('#spark').innerHTML = h.map((v) => `<i style="height:${Math.max((v / max) * 100, 1)}%" title="${v}"></i>`).join('');
-    $('#axis').innerHTML = h.map((_, i) => `<span>${i % 3 === 0 ? String(i).padStart(2, '0') : ''}</span>`).join('');
+    $('#spark').innerHTML = h.map((v, i) => `<i style="height:${Math.max((v / max) * 100, 1)}%" title="${String(i).padStart(2, '0')}:00 — ${v} 次"></i>`).join('');
+    // One label per hour bucket: the bars are already hourly, so labelling every
+    // third one made the trend look like it covered three-hour steps.
+    $('#axis').innerHTML = h.map((_, i) => `<span>${String(i).padStart(2, '0')}</span>`).join('');
 
     bars('#tDomains', d.domains, d.queries);
     bars('#tClients', d.clients, d.queries);

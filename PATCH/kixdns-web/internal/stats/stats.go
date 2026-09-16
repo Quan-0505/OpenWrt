@@ -226,7 +226,6 @@ func splitKV(line string) map[string]string {
 func (s *State) consumeLine(line string, loc *time.Location) {
 	if m := reTS.FindStringSubmatch(line); len(m) == 2 {
 		if t, err := time.ParseInLocation("2006-01-02T15:04:05", m[1], loc); err == nil {
-			s.Hourly[t.Hour()]++
 			s.LastTS = t.Unix()
 			if s.StartTS == 0 {
 				s.StartTS = t.Unix()
@@ -247,6 +246,17 @@ func (s *State) consumeLine(line string, loc *time.Location) {
 	ev := kv["event"]
 	if ev == "" {
 		return
+	}
+
+	// The hourly trend counts queries, so it is bumped here rather than for every
+	// timestamped line: kixdns emits several events per request, and a line count
+	// would make the chart show log volume instead of traffic.
+	if ev == "request_started" {
+		if m := reTS.FindStringSubmatch(line); len(m) == 2 {
+			if t, err := time.ParseInLocation("2006-01-02T15:04:05", m[1], loc); err == nil {
+				s.Hourly[t.Hour()]++
+			}
+		}
 	}
 
 	// Field lookup trims surrounding whitespace. Refresh() reads lines with
@@ -583,13 +593,16 @@ type Snapshot struct {
 
 	Error string `json:"error,omitempty"`
 
-	QType     []Counter `json:"qtype"`
-	RCodes    []Counter `json:"rcodes"`
-	Clients   []Counter `json:"clients"`
-	Domains   []Counter `json:"domains"`
-	Upstreams []Counter `json:"upstreams"`
-	Hourly    []int64   `json:"hourly"`
-	Daily     []int64   `json:"daily"`
+	QType   []Counter `json:"qtype"`
+	RCodes  []Counter `json:"rcodes"`
+	Clients []Counter `json:"clients"`
+	Domains []Counter `json:"domains"`
+	// DomainCount is every unique name seen this session, whereas Domains is
+	// only the top 20 returned for the table.
+	DomainCount int       `json:"domain_count"`
+	Upstreams   []Counter `json:"upstreams"`
+	Hourly      []int64   `json:"hourly"`
+	Daily       []int64   `json:"daily"`
 }
 
 func topN(m map[string]int64, n int) []Counter {
@@ -657,6 +670,7 @@ func (c *Collector) Snapshot() Snapshot {
 	snap.RCodes = topN(s.RC, 0)
 	snap.Clients = topN(s.IP, 20)
 	snap.Domains = topN(s.DM, 20)
+	snap.DomainCount = len(s.DM) // total unique names, not just the returned top 20
 	snap.Upstreams = topN(s.UP, 0)
 	snap.Hourly = append([]int64(nil), s.Hourly...)
 	snap.Daily = append([]int64(nil), s.Daily...)
@@ -664,10 +678,24 @@ func (c *Collector) Snapshot() Snapshot {
 }
 
 // Reset clears aggregated state (both in memory and on disk).
+// Reset zeroes the counters and keeps counting from now on.
+//
+// It deliberately does not drop the read position. Replacing the whole state
+// used to reset ReadPos to zero, so the very next refresh re-parsed the entire
+// log and immediately refilled the counters with history — the reset button
+// looked broken because the numbers came straight back. Only the counters are
+// cleared here; where we are in the file is not a counter.
 func (c *Collector) Reset() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	readPos := c.state.ReadPos
+	sessionStart := c.state.SessionStart
+	file := c.state.File
 	c.state = newState()
+	c.state.ReadPos = readPos
+	c.state.SessionStart = sessionStart
+	c.state.File = file
+	c.state.ProcStart = c.procStart()
 	c.lastErr = ""
 	return c.save()
 }
