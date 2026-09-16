@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"kixdns-web/internal/dnsmasq"
 	"kixdns-web/internal/service"
 	"kixdns-web/internal/stats"
 )
@@ -38,6 +39,7 @@ var webFS embed.FS
 type app struct {
 	svc       *service.Manager
 	stats     *stats.Collector
+	dnsmasq   *dnsmasq.Reader
 	statePath string
 	logDir    string
 	token     string // optional shared secret for the API
@@ -102,6 +104,7 @@ func main() {
 	a := &app{
 		svc:       svcMgr,
 		stats:     collector,
+		dnsmasq:   dnsmasq.New(),
 		statePath: *state,
 		logDir:    svcMgr.LogDir,
 		token:     *token,
@@ -109,6 +112,12 @@ func main() {
 		keepLogs:  *keepLogs,
 		logCap:    *logCapMB * 1024 * 1024,
 	}
+
+	// dnsmasq's own counters: kixdns only sees what dnsmasq forwards, so the
+	// client-side totals have to come from dnsmasq itself.
+	stopDNS := make(chan struct{})
+	defer close(stopDNS)
+	go a.dnsmasq.Run(15*time.Second, stopDNS)
 
 	// background aggregation + log rotation
 	go func() {
@@ -251,6 +260,9 @@ func (a *app) api(w http.ResponseWriter, r *http.Request) {
 			"config_ok": cfg != nil,
 			"log_files": a.svc.LogFiles(),
 		})
+
+	case "dnsmasq":
+		writeJSON(w, 200, a.dnsmasq.Snapshot())
 
 	case "stats":
 		if err := a.stats.Refresh(); err != nil {

@@ -74,10 +74,19 @@
   <!-- 仪表盘 -->
   <section id="tab-dash">
     <div class="grid">
-      <div class="card"><div class="label">客户端请求</div><div class="value" id="mQueries">—</div><div class="sub" id="mQps">—</div></div>
-      <div class="card"><div class="label">缓存命中率</div><div class="value" id="mRatio">—</div><div class="sub" id="mRatioSub">—</div></div>
+      <div class="card"><div class="label">kixdns 转发查询<span class="muted" title="dnsmasq 缓存未命中而转发给 kixdns 的查询数，不等于客户端真实请求数">(?)</span></div><div class="value" id="mQueries">—</div><div class="sub" id="mQps">—</div></div>
+      <div class="card"><div class="label">kixdns 缓存命中率</div><div class="value" id="mRatio">—</div><div class="sub" id="mRatioSub">—</div></div>
       <div class="card"><div class="label">端到端延迟</div><div class="value" id="mAvg">—</div><div class="sub" id="mMax">—</div></div>
       <div class="card"><div class="label">慢查询 &gt;500ms</div><div class="value" id="mSlow">—</div><div class="sub" id="mUp">—</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="label">查询链路：客户端 → dnsmasq → kixdns → 上游</div>
+      <table><tbody id="tChain"></tbody></table>
+      <div class="muted" style="font-size:12px;margin-top:8px">
+        kixdns 位于 dnsmasq 之后，只能看到 dnsmasq 缓存未命中而转发的查询。
+        客户端真实请求总数 = dnsmasq 转发 + dnsmasq 本地应答。
+      </div>
     </div>
 
     <div class="card" style="margin-bottom:14px">
@@ -238,6 +247,27 @@ async function loadStatus() {
   } catch (e) { toast('状态读取失败: ' + e.message, false); }
 }
 
+async function loadChain() {
+  try {
+    const d = await api('dnsmasq');
+    const el = $('#tChain');
+    if (!d.available) {
+      el.innerHTML = `<tr><td class="muted">dnsmasq 统计不可用${d.error ? '：' + esc(d.error) : ''}</td></tr>`;
+      return;
+    }
+    const rows = [
+      ['① 客户端真实请求（估算）', fmt(d.client_total), '转发 + dnsmasq 本地应答'],
+      ['② dnsmasq 本地应答（缓存/本地域名）', fmt(d.local_answered), d.client_total ? ((d.local_answered / d.client_total) * 100).toFixed(1) + '% 被 dnsmasq 消化' : ''],
+      ['③ dnsmasq 转发给 kixdns', fmt(d.forwarded), '= 上方「kixdns 转发查询」'],
+      ['④ dnsmasq 缓存条目累计', fmt(d.cache_inserted), '缓存上限 300 条'],
+      ['⑤ 未知/无应答', fmt(d.unanswered), ''],
+    ];
+    el.innerHTML = rows.map(([k, v, s]) =>
+      `<tr><th style="width:280px">${esc(k)}</th><td class="num" style="width:90px">${v}</td><td class="muted">${esc(s)}</td></tr>`).join('');
+    if (d.age_s > 60) el.insertAdjacentHTML('beforeend', `<tr><td colspan="3" class="muted">数据来自 ${d.age_s} 秒前的采样</td></tr>`);
+  } catch (e) { /* dnsmasq stats are optional */ }
+}
+
 async function loadStats() {
   try {
     const d = await api('stats');
@@ -343,9 +373,9 @@ function setAutoLog(on) {
 }
 $('#autoLog').onchange = (e) => setAutoLog(e.target.checked);
 
-loadStatus().then(loadStats);
+loadStatus().then(() => { loadStats(); loadChain(); });
 // Dashboard refresh: every 3 seconds.
-setInterval(() => { loadStats(); loadStatus(); }, 3000);
+setInterval(() => { loadStats(); loadStatus(); loadChain(); }, 3000);
 // The query-log tab may be the active view on load; start its timer so the
 // checkbox state and the actual behaviour agree.
 if ($('#autoLog').checked && $('#tab-log').style.display !== 'none') setAutoLog(true);
