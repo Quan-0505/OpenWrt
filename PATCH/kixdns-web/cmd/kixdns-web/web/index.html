@@ -103,8 +103,8 @@
     <div class="grid">
       <div class="card"><div class="label">kixdns 转发查询</div><div class="value" id="mQueries">—</div><div class="sub" id="mQps">—</div></div>
       <div class="card"><div class="label">kixdns 缓存命中率</div><div class="value" id="mRatio">—</div><div class="sub" id="mRatioSub">—</div></div>
-      <div class="card"><div class="label">kixdns 处理延迟<span class="muted" title="从 kixdns 收到查询到给出应答的耗时。不含 dnsmasq 处理与客户端到路由器的无线链路，所以不是客户端到上游的端到端延迟。">(?)</span></div><div class="value" id="mAvg">—</div><div class="sub" id="mMax">—</div></div>
-      <div class="card"><div class="label">上游延迟（仅未命中）<span class="muted" title="只有缓存未命中、真正转发到 mihomo 的查询才计入。这是联通卡 + mihomo 链路的往返时间。">(?)</span></div><div class="value" id="mUp">—</div><div class="sub" id="mUpSub">—</div></div>
+      <div class="card"><div class="label" title="从 kixdns 收到查询到给出应答的耗时。不含 dnsmasq 处理与客户端到路由器的无线链路，所以不是客户端到上游的端到端延迟。">kixdns 处理延迟</div><div class="value" id="mAvg">—</div><div class="sub" id="mMax">—</div></div>
+      <div class="card"><div class="label" title="只有缓存未命中、真正转发到 mihomo 的查询才计入。这是联通卡 + mihomo 链路的往返时间。">上游延迟（仅未命中）</div><div class="value" id="mUp">—</div><div class="sub" id="mUpSub">—</div></div>
     </div>
 
     <div class="card" style="margin-bottom:14px">
