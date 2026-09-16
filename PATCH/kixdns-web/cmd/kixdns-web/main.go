@@ -267,6 +267,14 @@ func serviceAction(path string) string {
 	return ""
 }
 
+// tzOffsetSeconds is the server's UTC offset in seconds, positive east of UTC.
+// Sent to the browser so the clock badge advances locally (the poll is every few
+// seconds) while still showing the device's timezone rather than the browser's.
+func tzOffsetSeconds() int {
+	_, off := time.Now().Zone()
+	return off
+}
+
 func (a *app) api(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/")
 	mutating := r.Method != http.MethodGet
@@ -288,6 +296,14 @@ func (a *app) api(w http.ResponseWriter, r *http.Request) {
 			"readonly":  a.readOnly,
 			"config_ok": cfg != nil,
 			"log_files": a.svc.LogFiles(),
+			// The device clock, not the browser's: the console is often opened
+			// from a machine in a different timezone, and the badge is about the
+			// router's own time. The server therefore formats it and reports the
+			// offset, so the page's rendering does not depend on where the
+			// browser thinks it is.
+			"server_time": time.Now().Unix(),
+			"tz":          time.Now().Format("MST"),
+			"tz_offset_s": tzOffsetSeconds(),
 		})
 
 	case "dnsmasq":
