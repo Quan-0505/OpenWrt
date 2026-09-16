@@ -92,9 +92,16 @@ func main() {
 		return
 	}
 
+	collector := stats.NewCollector(svcMgr.LogDir, *state)
+	// Let the collector notice kixdns restarts: a restart keeps appending to
+	// the same log file, and a stale byte offset would freeze the counters.
+	if pids := svcMgr.PIDs(); len(pids) > 0 {
+		collector.SetProcPID(pids[0])
+	}
+
 	a := &app{
 		svc:       svcMgr,
-		stats:     stats.NewCollector(svcMgr.LogDir, *state),
+		stats:     collector,
 		statePath: *state,
 		logDir:    svcMgr.LogDir,
 		token:     *token,
@@ -106,6 +113,9 @@ func main() {
 	// background aggregation + log rotation
 	go func() {
 		for {
+			if pids := a.svc.PIDs(); len(pids) > 0 {
+				a.stats.SetProcPID(pids[0])
+			}
 			if err := a.stats.Refresh(); err != nil {
 				log.Printf("stats refresh: %v", err)
 			}
