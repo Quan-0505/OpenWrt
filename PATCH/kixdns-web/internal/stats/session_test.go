@@ -28,8 +28,11 @@ func TestSessionBoundaryResetsOnRestart(t *testing.T) {
 	if err := os.Mkdir(procDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	base := time.Now().Truncate(time.Second)
+	base := time.Now().Add(-time.Hour).Truncate(time.Second)
 	setProc := func(off int64) {
+		// The token is the /proc mtime as epoch nanos; the collector turns it back
+		// into a wall-clock second. Offsets stay in the past so the derived start
+		// time is a real instant before now.
 		ts := base.Add(time.Duration(off) * time.Second)
 		if err := os.Chtimes(procDir, ts, ts); err != nil {
 			t.Fatal(err)
