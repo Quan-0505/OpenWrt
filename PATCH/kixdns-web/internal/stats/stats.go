@@ -55,6 +55,9 @@ type State struct {
 	SumUS     int64 `json:"sum_us"`
 	MaxUS     int64 `json:"max_us"`
 	Slow      int64 `json:"slow"`
+	// CacheWritten counts responses kixdns stored in its cache (dns_response
+	// with cache=true). Cumulative, not current occupancy.
+	CacheWritten int64 `json:"cache_written"`
 
 	QT map[string]int64 `json:"qtype"`
 	RC map[string]int64 `json:"rcode"`
@@ -235,6 +238,12 @@ func (s *State) consumeLine(line string, loc *time.Location) {
 			if us > slowThresholdUS {
 				s.Slow++
 			}
+		}
+	case "dns_response":
+		// kixdns writes the response into its cache when it had to forward;
+		// this event is emitted only on that path (cache hits do not emit it).
+		if get("cache") == "true" {
+			s.CacheWritten++
 		}
 	case "upstream_result":
 		if u := get("upstream"); u != "" {
@@ -465,6 +474,9 @@ type Snapshot struct {
 	UpFail  int64   `json:"up_fail"`
 	Slow    int64   `json:"slow"`
 	QPS     float64 `json:"qps"`
+	// CacheWritten is a cumulative write count; kixdns exposes no live
+	// cache-entry count, so the UI labels it accordingly.
+	CacheWritten int64 `json:"cache_written"`
 
 	Error string `json:"error,omitempty"`
 
@@ -501,18 +513,19 @@ func (c *Collector) Snapshot() Snapshot {
 	s := c.state
 
 	snap := Snapshot{
-		Generated: time.Now().Unix(),
-		StartTS:   s.StartTS,
-		LastTS:    s.LastTS,
-		Queries:   s.Queries,
-		CacheHit:  s.CacheHit,
-		CacheMiss: s.CacheMiss,
-		Blocked:   s.Blocked,
-		MaxUS:     s.MaxUS,
-		UpOK:      s.UpOK,
-		UpFail:    s.UpFail,
-		Slow:      s.Slow,
-		Error:     c.lastErr,
+		Generated:    time.Now().Unix(),
+		StartTS:      s.StartTS,
+		LastTS:       s.LastTS,
+		Queries:      s.Queries,
+		CacheHit:     s.CacheHit,
+		CacheMiss:    s.CacheMiss,
+		Blocked:      s.Blocked,
+		MaxUS:        s.MaxUS,
+		UpOK:         s.UpOK,
+		UpFail:       s.UpFail,
+		Slow:         s.Slow,
+		CacheWritten: s.CacheWritten,
+		Error:        c.lastErr,
 	}
 	if s.Queries > 0 {
 		snap.AvgUS = s.SumUS / s.Queries
