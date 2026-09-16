@@ -21,6 +21,9 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -121,6 +124,12 @@ type View struct {
 	// reported here so the chain table can show kixdns cache writes against the
 	// configured ceiling in one place.
 	KixdnsCapacity int64 `json:"kixdns_capacity"`
+
+	// WindowSeconds is how long dnsmasq has been running, i.e. the span its
+	// cumulative counters cover. kixdns's counters have their own window (the
+	// log file it is reading), so the two are not directly comparable unless the
+	// windows match; Age reports the window difference in seconds.
+	WindowSeconds int64 `json:"window_s"`
 }
 
 // SetKixdnsCapacity records the cache capacity configured for kixdns.
@@ -147,6 +156,37 @@ func ReadCapacity(configPath string) int64 {
 	return doc.Settings.CacheCapacity
 }
 
+// dnsmasqUptime returns how long the dnsmasq instance has been running, which
+// is the span its cumulative counters cover. The /proc/<pid> directory mtime is
+// the process start time here (verified on the device against the stat field).
+func dnsmasqUptime() int64 {
+	des, err := os.ReadDir("/proc")
+	if err != nil {
+		return 0
+	}
+	for _, de := range des {
+		pid, err := strconv.Atoi(de.Name())
+		if err != nil {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join("/proc", de.Name(), "cmdline"))
+		if err != nil {
+			continue
+		}
+		cmd := strings.ReplaceAll(string(b), "\x00", " ")
+		if !strings.Contains(cmd, "dnsmasq") || !strings.Contains(cmd, "dnsmasq.conf") {
+			continue
+		}
+		fi, err := os.Stat(filepath.Join("/proc", de.Name()))
+		if err != nil {
+			continue
+		}
+		_ = pid
+		return int64(time.Since(fi.ModTime()).Seconds())
+	}
+	return 0
+}
+
 // Snapshot converts the cached sample into the UI shape.
 func (r *Reader) Snapshot() View {
 	m, at, errMsg := r.Sample()
@@ -166,6 +206,7 @@ func (r *Reader) Snapshot() View {
 		Stale:          m.StaleAnswered,
 		Unanswered:     m.Unanswered + m.NoAnswer,
 		KixdnsCapacity: cap,
+		WindowSeconds:  dnsmasqUptime(),
 	}
 	if !at.IsZero() {
 		v.Age = int64(time.Since(at).Seconds())
