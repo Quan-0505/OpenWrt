@@ -101,10 +101,15 @@ func main() {
 		collector.SetProcPID(pids[0])
 	}
 
+	// kixdns reports no live cache-entry count, so the UI pairs its cumulative
+	// cache-write count with the configured ceiling instead.
+	dnsReader := dnsmasq.New()
+	dnsReader.SetKixdnsCapacity(dnsmasq.ReadCapacity(svcMgr.Config))
+
 	a := &app{
 		svc:       svcMgr,
 		stats:     collector,
-		dnsmasq:   dnsmasq.New(),
+		dnsmasq:   dnsReader,
 		statePath: *state,
 		logDir:    svcMgr.LogDir,
 		token:     *token,

@@ -19,6 +19,7 @@ package dnsmasq
 
 import (
 	"encoding/json"
+	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -37,12 +38,13 @@ type Metrics struct {
 
 // Reader polls dnsmasq metrics periodically and caches the last good sample.
 type Reader struct {
-	mu      sync.RWMutex
-	last    *Metrics
-	lastErr string
-	at      time.Time
-	bin     string
-	call    []string
+	mu       sync.RWMutex
+	last     *Metrics
+	lastErr  string
+	at       time.Time
+	bin      string
+	call     []string
+	capacity int64
 }
 
 // New returns a Reader that shells out to ubus.
@@ -114,22 +116,56 @@ type View struct {
 	// Derived: dnsmasq gives no total-client-query counter.
 	ClientTotal int64   `json:"client_total"`
 	LocalRatio  float64 `json:"local_ratio"`
+
+	// KixdnsCapacity is read from the pipeline config's cache_capacity. It is
+	// reported here so the chain table can show kixdns cache writes against the
+	// configured ceiling in one place.
+	KixdnsCapacity int64 `json:"kixdns_capacity"`
+}
+
+// SetKixdnsCapacity records the cache capacity configured for kixdns.
+func (r *Reader) SetKixdnsCapacity(n int64) {
+	r.mu.Lock()
+	r.capacity = n
+	r.mu.Unlock()
+}
+
+// ReadCapacity extracts settings.cache_capacity from a kixdns pipeline config.
+func ReadCapacity(configPath string) int64 {
+	b, err := os.ReadFile(configPath)
+	if err != nil {
+		return 0
+	}
+	var doc struct {
+		Settings struct {
+			CacheCapacity int64 `json:"cache_capacity"`
+		} `json:"settings"`
+	}
+	if err := json.Unmarshal(b, &doc); err != nil {
+		return 0
+	}
+	return doc.Settings.CacheCapacity
 }
 
 // Snapshot converts the cached sample into the UI shape.
 func (r *Reader) Snapshot() View {
 	m, at, errMsg := r.Sample()
+	r.mu.RLock()
+	cap := r.capacity
+	r.mu.RUnlock()
+
 	if m == nil {
-		return View{Available: false, Error: errMsg}
+		return View{Available: false, Error: errMsg, KixdnsCapacity: cap}
 	}
 	v := View{
-		Available:  true,
-		Forwarded:  m.QueriesForwarded,
-		Local:      m.LocalAnswered,
-		CacheIns:   m.CacheInserted,
-		Auth:       m.AuthAnswered,
-		Stale:      m.StaleAnswered,
-		Unanswered: m.Unanswered + m.NoAnswer,
+		Available:      true,
+		Forwarded:      m.QueriesForwarded,
+		Local:          m.LocalAnswered,
+		CacheIns:       m.CacheInserted,
+		Auth:           m.AuthAnswered,
+		Stale:          m.StaleAnswered,
+		Unanswered:     m.Unanswered + m.NoAnswer,
+		KixdnsCapacity: cap,
 	}
 	if !at.IsZero() {
 		v.Age = int64(time.Since(at).Seconds())
