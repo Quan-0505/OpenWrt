@@ -87,8 +87,7 @@ func (m *Manager) findPIDs() []int {
 	if err != nil {
 		return pids
 	}
-	base := filepath.Base(m.Bin)
-	if base == "" {
+	if m.Bin == "" {
 		return pids
 	}
 	for _, de := range des {
@@ -101,8 +100,7 @@ func (m *Manager) findPIDs() []int {
 			continue
 		}
 		cmd := strings.ReplaceAll(string(b), "\x00", " ")
-		// match the binary but exclude ourselves (our own path contains "kixdns")
-		if strings.Contains(cmd, base) && !strings.Contains(cmd, "kixdns-web") {
+		if m.matchesKixdns(cmd) {
 			pids = append(pids, pid)
 		}
 	}
@@ -122,7 +120,46 @@ func (m *Manager) readPIDFile() int {
 	if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(pid))); err != nil {
 		return 0 // stale
 	}
+	// The pid must still belong to kixdns. Checking only that the process exists
+	// is not enough: pids get recycled, and the watchdog that normally starts
+	// kixdns never writes this file, so its contents can name a process that has
+	// nothing to do with us. Trusting it made Start() refuse to run with
+	// "already running" while no kixdns was running at all.
+	cmd, err := os.ReadFile(filepath.Join("/proc", strconv.Itoa(pid), "cmdline"))
+	if err != nil {
+		return 0
+	}
+	if !m.matchesKixdns(strings.ReplaceAll(string(cmd), "\x00", " ")) {
+		return 0
+	}
 	return pid
+}
+
+// matchesKixdns reports whether a cmdline is the kixdns binary itself.
+//
+// It matches argv[0] rather than searching the whole command line: a substring
+// test for "kixdns" also matches /bin/sh /data/scripts/kixdns-guard.sh and the
+// kixdns-web command line (which carries the kixdns path as an argument), and
+// either would make Stop() kill an unrelated process.
+func (m *Manager) matchesKixdns(cmd string) bool {
+	if m.Bin == "" {
+		return false
+	}
+	fields := strings.Fields(cmd)
+	if len(fields) == 0 {
+		return false
+	}
+	argv0 := fields[0]
+	if argv0 == m.Bin {
+		return true
+	}
+	// Tolerate a different but equivalent spelling of the same file.
+	if filepath.Base(argv0) != filepath.Base(m.Bin) {
+		return false
+	}
+	a0, err1 := filepath.Abs(argv0)
+	a1, err2 := filepath.Abs(m.Bin)
+	return err1 == nil && err2 == nil && a0 == a1
 }
 
 // PIDs returns running kixdns PIDs (PID file first, /proc scan as fallback).
@@ -237,7 +274,7 @@ func (m *Manager) Start(debug bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if len(m.PIDs()) > 0 {
-		return errors.New("kixdns is already running")
+		return ErrAlreadyRunning
 	}
 	if m.Bin == "" {
 		return errors.New("kixdns binary not found")
@@ -274,6 +311,10 @@ func (m *Manager) Start(debug bool) error {
 }
 
 // Stop terminates kixdns (SIGTERM, then SIGKILL after a grace period).
+// Errors returned by the manager. ErrAlreadyRunning is exported so callers can
+// tell "refused to start" apart from a real failure.
+var ErrAlreadyRunning = errors.New("kixdns is already running")
+
 func (m *Manager) Stop() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -302,7 +343,25 @@ func (m *Manager) Stop() error {
 func (m *Manager) Restart(debug bool) error {
 	_ = m.Stop()
 	time.Sleep(500 * time.Millisecond)
-	return m.Start(debug)
+	// The watchdog runs every minute and starts kixdns the moment it sees the
+	// process gone, so it can win the race against this call. In that case the
+	// service is already back up and "already running" is the desired outcome,
+	// not an error — retry briefly and treat a live process as success.
+	var err error
+	for attempt := 0; attempt < 4; attempt++ {
+		err = m.Start(debug)
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, ErrAlreadyRunning) {
+			return err
+		}
+		time.Sleep(500 * time.Millisecond)
+		if len(m.PIDs()) > 0 {
+			return nil // someone else (the watchdog) restored it
+		}
+	}
+	return err
 }
 
 // ---------------------------------------------------------------------------

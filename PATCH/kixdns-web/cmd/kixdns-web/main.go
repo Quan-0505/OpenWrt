@@ -243,6 +243,25 @@ func writeErr(w http.ResponseWriter, code int, err error) {
 	writeJSON(w, code, map[string]string{"error": err.Error()})
 }
 
+// serviceAction maps a service endpoint path to an action name.
+//
+// Order matters: "service/restart" also ends with "start", so restart must be
+// tested first. With HasSuffix(path, "start") first, every restart silently
+// called Start() and failed with "kixdns is already running" while kixdns was
+// up. Returning "" for anything unrecognised keeps a typo from falling through
+// to a destructive default.
+func serviceAction(path string) string {
+	switch {
+	case strings.HasSuffix(path, "restart"):
+		return "restart"
+	case strings.HasSuffix(path, "start"):
+		return "start"
+	case strings.HasSuffix(path, "stop"):
+		return "stop"
+	}
+	return ""
+}
+
 func (a *app) api(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/")
 	mutating := r.Method != http.MethodGet
@@ -331,13 +350,16 @@ func (a *app) api(w http.ResponseWriter, r *http.Request) {
 		}
 		debug := r.URL.Query().Get("debug") == "1"
 		var err error
-		switch {
-		case strings.HasSuffix(path, "start"):
+		switch serviceAction(path) {
+		case "restart":
+			err = a.svc.Restart(debug)
+		case "start":
 			err = a.svc.Start(debug)
-		case strings.HasSuffix(path, "stop"):
+		case "stop":
 			err = a.svc.Stop()
 		default:
-			err = a.svc.Restart(debug)
+			writeErr(w, 404, fmt.Errorf("unknown service action"))
+			return
 		}
 		if err != nil {
 			writeErr(w, 500, err)

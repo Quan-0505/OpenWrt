@@ -68,7 +68,7 @@
   .spark i{flex:1;background:linear-gradient(180deg,var(--acc),var(--spark2));border-radius:2px 2px 0 0;min-height:1px}
   .axis{display:flex;gap:2px;color:var(--muted);font-size:10px;margin-top:4px}
   .axis span{flex:1;text-align:center}
-  /* Theme switch: a small pill that shows the mode it will switch to. */
+  /* Theme toggle is icon-only, so it needs tighter padding than the text buttons. */
   #btnTheme{padding:7px 11px;line-height:1;font-size:14px}
 </style>
 </head>
@@ -80,6 +80,10 @@
   <span class="badge" id="dbgBadge">debug —</span>
   <span class="badge" id="upBadge">运行 —</span>
   <div class="spacer"></div>
+  <!-- Restarts the kixdns process, not the page. Distinct from 刷新 (re-fetches
+       data) and from 服务 页's 重启 (same call, but that one relies on the debug
+       checkbox; this one always preserves the running debug state). -->
+  <button class="act" id="btnKixRestart" title="重启 kixdns 服务（保持当前 debug 状态）">重启</button>
   <button class="act" id="btnTheme" title="切换深浅模式">🌙</button>
   <button class="act" id="btnRefresh">刷新</button>
 </header>
@@ -407,6 +411,34 @@ $('#tabs').addEventListener('click', (ev) => {
 });
 
 $('#btnRefresh').onclick = () => { loadStatus(); loadStats(); };
+
+// Restart the kixdns process from the header.
+//
+// The debug flag has to be carried across: kixdns without --debug emits no
+// observer events, so every statistic silently goes to zero. The state of the
+// running process decides it, not a checkbox, so a restart from here can never
+// turn statistics off by accident.
+$('#btnKixRestart').onclick = async () => {
+  if (!confirm('重启 kixdns 服务？期间 DNS 解析会中断约 1-2 秒。')) return;
+  const b = $('#btnKixRestart');
+  b.disabled = true;
+  const label = b.textContent;
+  b.textContent = '重启中…';
+  try {
+    const st = await api('status');
+    const dbg = st.service && st.service.debug ? '?debug=1' : '';
+    await api('service/restart' + dbg, { method: 'POST' });
+    // Give the process a moment to come back before the first status read.
+    await new Promise((r) => setTimeout(r, 1500));
+    toast('kixdns 已重启' + (dbg ? '（debug 保持开启）' : ''));
+  } catch (e) {
+    toast('重启失败: ' + e.message, false);
+  } finally {
+    b.disabled = false;
+    b.textContent = label;
+    loadStatus(); loadStats();
+  }
+};
 
 // ---- theme ----------------------------------------------------------------
 // The saved choice wins; with nothing saved, follow the system preference and
