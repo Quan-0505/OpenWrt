@@ -381,17 +381,14 @@ func (c *Collector) Refresh() error {
 	}
 
 	s := c.state
-	// A restarted process keeps appending to the same file, so a stale offset
-	// would silently skip everything written before it. Detect the restart
-	// and re-read the current file from the start.
-	if ps := c.procStart(); ps != 0 {
-		if s.ProcStart != 0 && ps != s.ProcStart {
-			s.Offset = 0
-		}
-		s.ProcStart = ps
-	}
-
-	// Rotation or truncation: restart from the beginning of the new file.
+	// Rotation or truncation only: reset when the collector is pointed at a
+	// different file, or the file shrank (truncated/recreated).
+	//
+	// Deliberately NOT keyed on the process start token. The watchdog used to
+	// rotate the log on every kixdns start, which is what made a restart-time
+	// re-read correct; rotation is gone now, kixdns appends across restarts, so
+	// the stored offset stays valid. Resetting it here would re-parse lines that
+	// were already counted and inflate the totals.
 	if s.File != file || info.Size() < s.Offset {
 		s.Offset = 0
 		s.File = file
