@@ -129,6 +129,11 @@ func main() {
 		for {
 			if pids := a.svc.PIDs(); len(pids) > 0 {
 				a.stats.SetProcPID(pids[0])
+			} else {
+				// Clear it while the process is down: leaving a stale /proc path
+				// behind makes procStart() return 0, and a restart would then go
+				// unnoticed so the session counters would never reset.
+				a.stats.SetProcPID(0)
 			}
 			if err := a.stats.Refresh(); err != nil {
 				log.Printf("stats refresh: %v", err)

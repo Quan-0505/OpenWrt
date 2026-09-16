@@ -283,16 +283,16 @@ async function loadChain() {
     const [d, s] = await Promise.all([api('dnsmasq'), api('stats')]);
     const el = $('#tChain');
     const cap = d.kixdns_capacity || 0;
-    const winD = d.window_s || 0;
-    const winK = (s.generated && s.start_ts) ? (s.generated - s.start_ts) : 0;
 
-    // Same quantity, two windows: report the longer-accumulating one.
+    // The forwarded counter is per kixdns run: the collector resets it when the
+    // process is replaced, so label it with the session age rather than a window
+    // that spans restarts.
     const total = Math.max(d.forwarded || 0, s.queries || 0);
-    const totalWin = Math.max(winD, winK);
+    const sess = s.session_s || 0;
 
     const rows = [
       ['① dnsmasq 本地应答（本地域名 / hosts）', fmt(d.local_answered), '这些名字 dnsmasq 直接应答'],
-      ['② 转发给 kixdns（= kixdns 收到）', fmt(total), totalWin ? '累计 ' + dur(totalWin) : ''],
+      ['② 转发给 kixdns（= kixdns 收到）', fmt(total), sess ? '本次启动 ' + dur(sess) : ''],
       ['③ kixdns 缓存命中', fmt(s.cache_hit), s.cache_hit + s.cache_miss > 0 ? '累计命中率 ' + ((s.cache_hit / (s.cache_hit + s.cache_miss)) * 100).toFixed(1) + '%' : ''],
       ['④ kixdns 缓存命中率（最近 ' + (s.recent_samples || 0) + ' 次）', s.recent_samples ? s.recent_ratio.toFixed(1) + '%' : '—', s.recent_samples ? '实时反映当前流量' : '样本收集中'],
       ['⑤ kixdns 缓存写入（累计）', fmt(s.cache_written), cap ? '容量上限 ' + fmt(cap) + ' 条' : ''],

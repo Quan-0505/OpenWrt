@@ -59,6 +59,17 @@ type State struct {
 	// with cache=true). Cumulative, not current occupancy.
 	CacheWritten int64 `json:"cache_written"`
 
+	// SessionStart is the byte offset where the current kixdns session begins.
+	// Lines at or before it belong to an earlier process and are not counted, so
+	// the totals describe this run rather than the whole file.
+	SessionStart int64 `json:"session_start"`
+	// SessionStartTS is the wall-clock second that session began.
+	SessionStartTS int64 `json:"session_start_ts"`
+	// ReadPos is how far into the file parsing has advanced. It is separate from
+	// Offset so a session boundary can be recorded without moving the read
+	// position (moving it would skip the first lines of the new session).
+	ReadPos int64 `json:"read_pos"`
+
 	// RecentHits is a rolling window over the most recent cache decisions
 	// (1 = hit, 0 = miss), giving a ratio that tracks current traffic instead
 	// of everything since startup.
@@ -74,6 +85,42 @@ type State struct {
 	Daily  []int64 `json:"daily"`
 
 	dayKey string
+}
+
+// sessionReset zeroes the counters that describe one kixdns run, leaving the
+// read position, the session boundary and the file pointer alone. Called when a
+// new process is detected so the totals restart at zero.
+func (s *State) sessionReset() {
+	s.StartTS = 0
+	s.LastTS = 0
+	s.Queries = 0
+	s.CacheHit = 0
+	s.CacheMiss = 0
+	s.Blocked = 0
+	s.UpOK = 0
+	s.UpFail = 0
+	s.UpSumUS = 0
+	s.SumUS = 0
+	s.MaxUS = 0
+	s.Slow = 0
+	s.CacheWritten = 0
+	s.RecentHits = nil
+	s.QT = map[string]int64{}
+	s.RC = map[string]int64{}
+	s.IP = map[string]int64{}
+	s.DM = map[string]int64{}
+	s.UP = map[string]int64{}
+	s.Hourly = make([]int64, 24)
+	s.Daily = make([]int64, 30)
+	s.dayKey = ""
+}
+
+// sessionSeconds reports how long the current counters have been accumulating.
+func sessionSeconds(s *State) int64 {
+	if s.SessionStartTS == 0 {
+		return 0
+	}
+	return time.Now().Unix() - s.SessionStartTS
 }
 
 const slowThresholdUS = 500000
@@ -409,11 +456,36 @@ func (c *Collector) Refresh() error {
 	// re-read correct; rotation is gone now, kixdns appends across restarts, so
 	// the stored offset stays valid. Resetting it here would re-parse lines that
 	// were already counted and inflate the totals.
-	if s.File != file || info.Size() < s.Offset {
-		s.Offset = 0
-		s.File = file
+	// A replaced process starts a new session: everything already in the file
+	// belongs to the previous one. Record where the old session ended. The read
+	// position is deliberately left where it is — advancing it to the file end
+	// would skip the first lines the new process writes — and the parse loop
+	// instead ignores lines that fall before this boundary.
+	if ps := c.procStart(); ps != 0 {
+		// SessionStartTS != 0 means a session was already being tracked, so a
+		// different token here is a genuine replacement rather than the first
+		// sample after start-up.
+		if s.SessionStartTS != 0 && ps != s.ProcStart {
+			// The new session begins where we had already read up to, not at the
+			// end of the file: the new process may have written lines before we
+			// noticed the restart, and those belong to it and must still count.
+			s.SessionStart = s.ReadPos
+			s.SessionStartTS = time.Now().Unix()
+			s.sessionReset()
+		}
+		s.ProcStart = ps
 	}
-	if info.Size() == s.Offset {
+	if s.SessionStartTS == 0 {
+		s.SessionStartTS = time.Now().Unix()
+	}
+
+	if s.File != file || info.Size() < s.ReadPos {
+		s.Offset = 0
+		s.ReadPos = 0
+		s.File = file
+		s.SessionStart = 0
+	}
+	if info.Size() == s.ReadPos {
 		return nil // nothing new
 	}
 
@@ -424,19 +496,24 @@ func (c *Collector) Refresh() error {
 	}
 	defer f.Close()
 
-	if _, err := f.Seek(s.Offset, io.SeekStart); err != nil {
+	if _, err := f.Seek(s.ReadPos, io.SeekStart); err != nil {
 		c.lastErr = err.Error()
 		return err
 	}
 
 	r := bufio.NewReaderSize(f, 256*1024) // kixdns lines can be long
-	var consumed int64
 	for {
 		line, err := r.ReadString('\n')
 		if len(line) > 0 {
 			if line[len(line)-1] == '\n' {
-				s.consumeLine(line, c.loc)
-				consumed += int64(len(line))
+				// A line belongs to the current session when it ends after the
+				// session boundary. Lines at or before it are from a previous
+				// kixdns process: skipped here, but the read position still
+				// advances past them.
+				if end := s.ReadPos + int64(len(line)); s.SessionStart == 0 || end > s.SessionStart {
+					s.consumeLine(line, c.loc)
+				}
+				s.ReadPos += int64(len(line))
 			} else {
 				break // partial trailing line: leave it for the next refresh
 			}
@@ -445,7 +522,7 @@ func (c *Collector) Refresh() error {
 			break
 		}
 	}
-	s.Offset += consumed
+	s.Offset = s.ReadPos
 	c.lastErr = ""
 	return c.save()
 }
@@ -495,6 +572,10 @@ type Snapshot struct {
 	// cache-entry count, so the UI labels it accordingly.
 	CacheWritten int64 `json:"cache_written"`
 
+	// SessionSeconds is how long the counters have been accumulating, i.e.
+	// since the current kixdns process started. Resets on restart.
+	SessionSeconds int64 `json:"session_s"`
+
 	// RecentRatio is the hit ratio over the trailing recentWindow decisions;
 	// RecentSamples is how many decisions it covers (fills up after a restart).
 	RecentRatio   float64 `json:"recent_ratio"`
@@ -535,19 +616,20 @@ func (c *Collector) Snapshot() Snapshot {
 	s := c.state
 
 	snap := Snapshot{
-		Generated:    time.Now().Unix(),
-		StartTS:      s.StartTS,
-		LastTS:       s.LastTS,
-		Queries:      s.Queries,
-		CacheHit:     s.CacheHit,
-		CacheMiss:    s.CacheMiss,
-		Blocked:      s.Blocked,
-		MaxUS:        s.MaxUS,
-		UpOK:         s.UpOK,
-		UpFail:       s.UpFail,
-		Slow:         s.Slow,
-		CacheWritten: s.CacheWritten,
-		Error:        c.lastErr,
+		Generated:      time.Now().Unix(),
+		StartTS:        s.StartTS,
+		LastTS:         s.LastTS,
+		Queries:        s.Queries,
+		CacheHit:       s.CacheHit,
+		CacheMiss:      s.CacheMiss,
+		Blocked:        s.Blocked,
+		MaxUS:          s.MaxUS,
+		SessionSeconds: sessionSeconds(s),
+		UpOK:           s.UpOK,
+		UpFail:         s.UpFail,
+		Slow:           s.Slow,
+		CacheWritten:   s.CacheWritten,
+		Error:          c.lastErr,
 	}
 	if s.Queries > 0 {
 		snap.AvgUS = s.SumUS / s.Queries
@@ -566,6 +648,7 @@ func (c *Collector) Snapshot() Snapshot {
 		snap.RecentSamples = int64(n)
 		snap.RecentRatio = float64(hits) / float64(n) * 100
 	}
+	snap.SessionSeconds = sessionSeconds(s)
 	if span := s.LastTS - s.StartTS; span > 0 {
 		snap.QPS = float64(s.Queries) / float64(span)
 	}
