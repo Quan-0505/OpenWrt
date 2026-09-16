@@ -133,6 +133,66 @@ func (m *Manager) PIDs() []int {
 	return m.findPIDs()
 }
 
+// procUptimeSeconds returns how long the given process has been running.
+//
+// It reads the starttime field (22) from /proc/<pid>/stat 鈥?clock ticks since
+// boot 鈥?rather than relying on the /proc/<pid> directory mtime, which is not
+// a documented start-time source. The value is in clock ticks (USER_HZ, 100 on
+// Linux and on this device), so the arithmetic is ticks/100 - uptime, both of
+// which the kernel reports; no sysconf call is required.
+func procUptimeSeconds(pid int) int64 {
+	if pid <= 0 {
+		return 0
+	}
+	b, err := os.ReadFile(filepath.Join("/proc", strconv.Itoa(pid), "stat"))
+	if err != nil {
+		return 0
+	}
+	// The comm field is parenthesised and may contain spaces and parens, so
+	// fields must be counted from after its last ')'.
+	open := strings.IndexByte(string(b), '(')
+	if open < 0 {
+		return 0
+	}
+	closeIdx := strings.LastIndexByte(string(b), ')')
+	if closeIdx <= open {
+		return 0
+	}
+	fields := strings.Fields(string(b)[closeIdx+1:])
+	// After ')' the next field is state (field 3), so starttime (field 22) is
+	// at index 22-3 = 19.
+	const starttimeIdx = 19
+	if len(fields) <= starttimeIdx {
+		return 0
+	}
+	startTicks, err := strconv.ParseInt(fields[starttimeIdx], 10, 64)
+	if err != nil {
+		return 0
+	}
+	up, err := systemUptimeSeconds()
+	if err != nil {
+		return 0
+	}
+	return up - startTicks/100
+}
+
+// systemUptimeSeconds returns the system uptime from /proc/uptime.
+func systemUptimeSeconds() (int64, error) {
+	b, err := os.ReadFile("/proc/uptime")
+	if err != nil {
+		return 0, err
+	}
+	fields := strings.Fields(string(b))
+	if len(fields) == 0 {
+		return 0, errors.New("empty /proc/uptime")
+	}
+	secs, err := strconv.ParseFloat(fields[0], 64)
+	if err != nil {
+		return 0, err
+	}
+	return int64(secs), nil
+}
+
 // Status reports whether kixdns is running, and how it was started.
 type Status struct {
 	Running bool   `json:"running"`
@@ -151,13 +211,10 @@ func (m *Manager) Status() Status {
 	st.PIDs = m.PIDs()
 	st.Running = len(st.PIDs) > 0
 	if st.Running {
-		pidDir := filepath.Join("/proc", strconv.Itoa(st.PIDs[0]))
-		if b, err := os.ReadFile(filepath.Join(pidDir, "cmdline")); err == nil {
+		if b, err := os.ReadFile(filepath.Join("/proc", strconv.Itoa(st.PIDs[0]), "cmdline")); err == nil {
 			st.Debug = strings.Contains(strings.ReplaceAll(string(b), "\x00", " "), "--debug")
 		}
-		if fi, err := os.Stat(pidDir); err == nil {
-			st.Uptime = int64(time.Since(fi.ModTime()).Seconds())
-		}
+		st.Uptime = procUptimeSeconds(st.PIDs[0])
 	}
 	st.Version = m.Version()
 	return st

@@ -56,6 +56,7 @@
   <span class="badge"><i class="dot" id="dot"></i><span id="stateText">读取中…</span></span>
   <span class="badge" id="verBadge">版本 —</span>
   <span class="badge" id="dbgBadge">debug —</span>
+  <span class="badge" id="upBadge">运行 —</span>
   <div class="spacer"></div>
   <button class="act" id="btnRefresh">刷新</button>
 </header>
@@ -172,6 +173,17 @@ const ms = (us) => (us == null ? '—' : (us / 1000).toFixed(us < 10000 ? 2 : 1)
 const bytes = (b) => { if (b == null) return '—'; const u = ['B', 'KB', 'MB', 'GB']; let i = 0; while (b >= 1024 && i < 3) { b /= 1024; i++; } return b.toFixed(i ? 1 : 0) + ' ' + u[i]; };
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// Compact duration for the header badge: "12天 3小时", "2小时 15分", "5分 20秒".
+function dur(sec) {
+  if (sec == null || sec <= 0) return '—';
+  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600),
+    m = Math.floor((sec % 3600) / 60), s = Math.floor(sec % 60);
+  if (d) return d + '天 ' + h + '小时';
+  if (h) return h + '小时 ' + m + '分';
+  if (m) return m + '分 ' + s + '秒';
+  return s + '秒';
+}
+
 function toast(text, ok = true) {
   const m = $('#msg'); m.textContent = text; m.className = 'msg show ' + (ok ? 'ok' : 'err');
   clearTimeout(toast._t); toast._t = setTimeout(() => m.classList.remove('show'), 4000);
@@ -200,6 +212,9 @@ async function loadStatus() {
     $('#stateText').textContent = svc.running ? '运行中' : '已停止';
     $('#verBadge').textContent = '版本 ' + (svc.version || '—');
     $('#dbgBadge').textContent = 'debug ' + (svc.debug ? '开' : '关');
+    // kixdns uptime, shown next to the debug badge (computed from the process
+    // start time, so it survives page reloads and resets only on restart).
+    $('#upBadge').textContent = svc.running ? '运行 ' + dur(svc.uptime_s) : '未运行';
     $('#debugMode').checked = !!svc.debug;
     const rows = [
       ['运行状态', svc.running ? `运行中 (pid ${svc.pids.join(', ')})` : '已停止'],
