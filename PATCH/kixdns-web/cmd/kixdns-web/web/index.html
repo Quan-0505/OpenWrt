@@ -316,10 +316,12 @@ async function loadStats() {
     // composition underneath (hits/misses, upstream time), so a bare figure is
     // never read on its own.
     $('#mQueries').textContent = fmt(d.queries);
-    $('#mQps').textContent = `${fmt(d.cache_hit)} 命中 / ${fmt(d.cache_miss)} 未命中` +
+    $('#mQps').textContent = `${fmt(d.domain_count)} 个唯一域名` +
       (d.qps ? ` · ${d.qps.toFixed(2)} 次/秒` : '');
     $('#mRatio').textContent = d.cache_hit || d.cache_miss ? d.cache_ratio.toFixed(1) + '%' : '—';
-    $('#mRatioSub').textContent = `${fmt(d.domain_count)} 个唯一域名`;
+    // The reference console puts the hit/miss composition under the hit ratio;
+    // the unique-domain count took its place under the request count.
+    $('#mRatioSub').textContent = `${fmt(d.cache_hit)} 命中 / ${fmt(d.cache_miss)} 未命中`;
     $('#mAvg').textContent = d.avg_us ? ms(d.avg_us) : '—';
     // The mean is bimodal: cache hits land well under a millisecond while
     // forwarded queries take tens to hundreds. State the composition so the
