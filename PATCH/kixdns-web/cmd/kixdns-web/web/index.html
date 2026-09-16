@@ -110,11 +110,6 @@
     <div class="card" style="margin-bottom:14px">
       <div class="label">查询链路：客户端 → dnsmasq → kixdns → 上游</div>
       <table><tbody id="tChain"></tbody></table>
-      <div class="muted" style="font-size:12px;margin-top:8px">
-        dnsmasq 对 <code>/etc/hosts</code>、租约名与 <code>.lan</code> 名字直接应答（①），
-        其余查询转发给 kixdns（②）；实测两者的转发量与 kixdns 收到的数量 1:1 相同，
-        故合并为一行。本地应答的查询通常也被转发一次，因此 ① 与 ② 不可相加。
-      </div>
     </div>
 
     <div class="card" style="margin-bottom:14px">
@@ -284,8 +279,7 @@ async function loadChain() {
     // Measured on the device: dnsmasq's dns_queries_forwarded and kixdns's
     // received count move 1:1 (five lookups incremented each by exactly one), so
     // showing both as separate rows is redundant. They are shown once, taking
-    // whichever counter has been accumulating longer, and the window difference
-    // is stated instead of implied.
+    // whichever counter has been accumulating longer.
     const [d, s] = await Promise.all([api('dnsmasq'), api('stats')]);
     const el = $('#tChain');
     const cap = d.kixdns_capacity || 0;
@@ -293,7 +287,6 @@ async function loadChain() {
     const winK = (s.generated && s.start_ts) ? (s.generated - s.start_ts) : 0;
 
     // Same quantity, two windows: report the longer-accumulating one.
-    const kixdnsLonger = winK >= winD;
     const total = Math.max(d.forwarded || 0, s.queries || 0);
     const totalWin = Math.max(winD, winK);
 
@@ -312,14 +305,6 @@ async function loadChain() {
     el.innerHTML = rows.map(([k, v, sub]) =>
       `<tr><th style="width:300px">${esc(k)}</th><td class="num" style="width:90px">${v}</td><td class="muted">${esc(sub)}</td></tr>`).join('');
 
-    if (Math.abs(winK - winD) > 120) {
-      const older = kixdnsLonger ? 'kixdns' : 'dnsmasq';
-      el.insertAdjacentHTML('beforeend',
-        `<tr><td colspan="3" class="muted" style="padding-top:10px">
-           ${esc(older)} 的统计起点更早（相差约 ${dur(Math.abs(winK - winD))}），
-           ① 与 ② 的窗口不同，不应直接比较。设备重启后两者会同时从零开始。
-         </td></tr>`);
-    }
     if (d.age_s > 60) el.insertAdjacentHTML('beforeend', `<tr><td colspan="3" class="muted">dnsmasq 数据来自 ${d.age_s} 秒前的采样</td></tr>`);
   } catch (e) { /* the chain table is informational; never block the dashboard */ }
 }
