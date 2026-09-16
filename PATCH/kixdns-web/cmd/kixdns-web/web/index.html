@@ -120,7 +120,7 @@
         <option value="5000">5000 行</option>
       </select>
       <button class="act primary" id="btnLog">加载</button>
-      <label class="muted"><input type="checkbox" id="autoLog"> 自动刷新（5s）</label>
+      <label class="muted"><input type="checkbox" id="autoLog" checked> 自动刷新（5s）</label>
       <span class="muted" id="logMeta"></span>
     </div>
     <pre id="logBody">—</pre>
@@ -298,7 +298,8 @@ $('#tabs').addEventListener('click', (ev) => {
   document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('active', x === b));
   for (const s of document.querySelectorAll('main > section')) s.style.display = 'none';
   $('#tab-' + b.dataset.tab).style.display = '';
-  if (b.dataset.tab === 'log') loadLog();
+  if (b.dataset.tab === 'log') { loadLog(); setAutoLog($('#autoLog').checked); }
+  else setAutoLog(false); // stop polling logs when the tab is not visible
   if (b.dataset.tab === 'cfg') loadCfg();
   if (b.dataset.tab === 'svc') loadStatus();
 });
@@ -320,13 +321,19 @@ $('#btnResetStats').onclick = async () => {
 };
 
 let autoTimer = null;
-$('#autoLog').onchange = (e) => {
+function setAutoLog(on) {
   clearInterval(autoTimer);
-  if (e.target.checked) autoTimer = setInterval(loadLog, 5000);
-};
+  autoTimer = null;
+  if (on) autoTimer = setInterval(loadLog, 5000);
+}
+$('#autoLog').onchange = (e) => setAutoLog(e.target.checked);
 
 loadStatus().then(loadStats);
-setInterval(() => { loadStats(); loadStatus(); }, 10000);
+// Dashboard refresh: every 3 seconds.
+setInterval(() => { loadStats(); loadStatus(); }, 3000);
+// The query-log tab may be the active view on load; start its timer so the
+// checkbox state and the actual behaviour agree.
+if ($('#autoLog').checked && $('#tab-log').style.display !== 'none') setAutoLog(true);
 </script>
 </body>
 </html>
