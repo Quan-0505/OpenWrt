@@ -166,8 +166,44 @@ func newState() *State {
 // further fields on the same line, which greedy per-field regexes get wrong.
 // ---------------------------------------------------------------------------
 
-// reTS extracts the RFC3339 timestamp prefix that every log line carries.
-var reTS = regexp.MustCompile("^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})")
+// reTS extracts the timestamp prefix that every log line carries.
+//
+// The trailing part is captured too because it says which zone the stamp is in:
+// kixdns writes "…T09:19:05.199374387Z", i.e. UTC. Parsing that as local time
+// only looked right while the device itself ran on UTC; once its clock moved to
+// UTC+8 every bucket, daily total and session start would have shifted eight
+// hours. Capturing the zone keeps the reading correct either way.
+var reTS = regexp.MustCompile("^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})?)")
+
+// lineTime parses a line's timestamp as an absolute instant and converts it to
+// the given zone for bucketing.
+func lineTime(line string, loc *time.Location) (time.Time, bool) {
+	m := reTS.FindStringSubmatch(line)
+	if len(m) != 2 {
+		return time.Time{}, false
+	}
+	raw := m[1]
+	switch {
+	case strings.HasSuffix(raw, "Z"):
+		// RFC3339 handles the Z; the fractional part is optional in the input.
+		t, err := time.Parse(time.RFC3339Nano, raw)
+		if err != nil {
+			return time.Time{}, false
+		}
+		return t.In(loc), true
+	case strings.ContainsAny(raw[len(raw)-6:], "+-"):
+		if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+			return t.In(loc), true
+		}
+	}
+	// No zone in the stamp: there is nothing better to assume than the log's own
+	// zone, which is what the caller passes in.
+	t, err := time.ParseInLocation("2006-01-02T15:04:05", raw, loc)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return t, true
+}
 
 func isKeyByte(c byte) bool {
 	return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
@@ -241,21 +277,19 @@ func splitKV(line string) map[string]string {
 
 // consumeLine folds one log line into the state.
 func (s *State) consumeLine(line string, loc *time.Location) {
-	if m := reTS.FindStringSubmatch(line); len(m) == 2 {
-		if t, err := time.ParseInLocation("2006-01-02T15:04:05", m[1], loc); err == nil {
-			s.LastTS = t.Unix()
-			if s.StartTS == 0 {
-				s.StartTS = t.Unix()
-			}
-			dk := t.Format("2006-01-02")
-			switch {
-			case s.dayKey == "":
-				s.dayKey = dk
-			case s.dayKey != dk:
-				copy(s.Daily, s.Daily[1:])
-				s.Daily[len(s.Daily)-1] = 0
-				s.dayKey = dk
-			}
+	if t, ok := lineTime(line, loc); ok {
+		s.LastTS = t.Unix()
+		if s.StartTS == 0 {
+			s.StartTS = t.Unix()
+		}
+		dk := t.Format("2006-01-02")
+		switch {
+		case s.dayKey == "":
+			s.dayKey = dk
+		case s.dayKey != dk:
+			copy(s.Daily, s.Daily[1:])
+			s.Daily[len(s.Daily)-1] = 0
+			s.dayKey = dk
 		}
 	}
 
@@ -269,10 +303,8 @@ func (s *State) consumeLine(line string, loc *time.Location) {
 	// timestamped line: kixdns emits several events per request, and a line count
 	// would make the chart show log volume instead of traffic.
 	if ev == "request_started" {
-		if m := reTS.FindStringSubmatch(line); len(m) == 2 {
-			if t, err := time.ParseInLocation("2006-01-02T15:04:05", m[1], loc); err == nil {
-				s.Hourly[t.Hour()]++
-			}
+		if t, ok := lineTime(line, loc); ok {
+			s.Hourly[t.Hour()]++
 		}
 	}
 

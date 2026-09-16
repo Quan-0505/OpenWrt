@@ -21,6 +21,9 @@
 #     "a process is running" and does nothing. Such a process is detected by
 #     checking whether the pid holding the listening socket has a deleted
 #     executable, and only it is restarted — never the healthy process.
+# 设备时区 Asia/Shanghai (UTC+8)。musl 不读 /etc/TZ，子进程必须靠 TZ 环境变量。
+TZ=CST-8
+export TZ
 K=/data/ufi-tools/kixdns
 W=/data/ufi-tools/kixdns-web
 INJ=/tmp/dnsmasq.d/99-kixdns.conf
