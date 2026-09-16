@@ -1,0 +1,84 @@
+#!/bin/sh /etc/rc.common
+# kixdns-web - AdGuardHome-style console for kixdns.
+#
+# Reader note: this init script runs BOTH the console and (optionally) kixdns
+# itself with --debug, which is what produces the statistics the console shows.
+# Without --debug kixdns emits no observer events and every counter stays 0.
+
+START=96
+STOP=10
+USE_PROCD=1
+
+PROG=/usr/bin/kixdns-web
+KIXDNS=/usr/bin/kixdns
+CONF=/etc/kixdns/pipeline.json
+LOGDIR=/var/log/kixdns
+STATEDIR=/var/lib/kixdns
+PIDFILE=/var/run/kixdns.pid
+WEBPID=/var/run/kixdns-web.pid
+
+# Log retention: the active file plus $KEEP_LOGS rotated files.
+# KEEP_LOGS=2 gives exactly 3 days of history ("只保留 3 天").
+KEEP_LOGS=2
+LOG_CAP_MB=24
+
+is_enabled() {
+	[ "$(uci -q get kixdns-web.main.enabled || echo 0)" = "1" ]
+}
+
+start_service() {
+	local listen debug token readonly
+	listen=$(uci -q get kixdns-web.main.listen || echo "0.0.0.0:8080")
+	debug=$(uci -q get kixdns-web.main.debug || echo "1")
+	token=$(uci -q get kixdns-web.main.token || echo "")
+	readonly=$(uci -q get kixdns-web.main.readonly || echo "0")
+
+	mkdir -p "$LOGDIR" "$STATEDIR"
+
+	# --- kixdns itself (the thing being monitored) -------------------------
+	if [ "$debug" = "1" ] && [ -x "$KIXDNS" ]; then
+		if ! pidof kixdns >/dev/null 2>&1; then
+			procd_open_instance kixdns
+			procd_set_param command "$KIXDNS" run -c "$CONF" --debug
+			procd_set_param stdout 1
+			procd_set_param stderr 1
+			procd_set_param respawn 3600 5 5
+			procd_set_param pidfile "$PIDFILE"
+			procd_close_instance
+		fi
+	fi
+
+	# --- the console -------------------------------------------------------
+	local args="-listen $listen -bin $KIXDNS -config $CONF -logdir $LOGDIR -state $STATEDIR/stats.json"
+	args="$args -pidfile $PIDFILE -keep-logs $KEEP_LOGS -log-cap-mb $LOG_CAP_MB"
+	[ -n "$token" ] && args="$args -token $token"
+	[ "$readonly" = "1" ] && args="$args -readonly"
+
+	procd_open_instance web
+	procd_set_param command "$PROG" $args
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param respawn 3600 5 5
+	procd_set_param pidfile "$WEBPID"
+	procd_close_instance
+}
+
+stop_service() {
+	# kixdns is left alone: it is also started by the kixdns package itself.
+	:
+}
+
+reload_service() {
+	stop
+	start
+}
+
+service_triggers() {
+	procd_add_reload_trigger "kixdns-web"
+	procd_add_validation validate_config
+}
+
+validate_config() {
+	[ -x "$PROG" ] || return 0
+	"$PROG" -check -bin "$KIXDNS" -config "$CONF" -logdir "$LOGDIR" >/dev/null 2>&1
+}
