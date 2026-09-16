@@ -104,6 +104,7 @@
       <div class="card"><div class="label">客户端请求</div><div class="value" id="mQueries">—</div><div class="sub" id="mQps">—</div></div>
       <div class="card"><div class="label">缓存命中率</div><div class="value" id="mRatio">—</div><div class="sub" id="mRatioSub">—</div></div>
       <div class="card"><div class="label" title="从 kixdns 收到查询到给出应答的耗时。不含 dnsmasq 处理与客户端到路由器的无线链路，所以不是客户端到上游的端到端延迟。">端到端延迟</div><div class="value" id="mAvg">—</div><div class="sub" id="mMax">—</div></div>
+      <div class="card"><div class="label" title="kixdns 处理超过 500 ms 的查询数。端到端延迟是均值，慢查询单独看才能发现偶发的卡顿。">慢查询 &gt;500ms</div><div class="value" id="mSlow">—</div><div class="sub" id="mSlowSub">—</div></div>
     </div>
 
     <div class="card" style="margin-bottom:14px">
@@ -324,8 +325,12 @@ async function loadStats() {
     // forwarded queries take tens to hundreds. State the composition so the
     // average is not read as a typical client-visible latency.
     $('#mMax').textContent = d.cache_hit || d.cache_miss
-      ? `含缓存命中 · 上游 ${d.avg_up_us ? ms(d.avg_up_us) : '—'} · 慢查询 ${fmt(d.slow)}`
-      : `上游 ${d.avg_up_us ? ms(d.avg_up_us) : '—'} · 慢查询 ${fmt(d.slow)}`;
+      ? `含缓存命中 · 上游 ${d.avg_up_us ? ms(d.avg_up_us) : '—'}`
+      : `上游 ${d.avg_up_us ? ms(d.avg_up_us) : '—'}`;
+    $('#mSlow').textContent = fmt(d.slow);
+    $('#mSlowSub').textContent = d.slow
+      ? `占 ${((d.slow / (d.queries || 1)) * 100).toFixed(1)}% · 上游失败 ${fmt(d.up_fail)}`
+      : `上游成功 ${fmt(d.up_ok)} / 失败 ${fmt(d.up_fail)}`;
     if (d.error) toast('统计警告: ' + d.error, false);
 
     const h = d.hourly || []; const max = Math.max(...h, 1);
