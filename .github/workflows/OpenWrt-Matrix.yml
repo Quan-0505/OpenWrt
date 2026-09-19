@@ -133,7 +133,7 @@ jobs:
           openwrt_source_name="openwrt-source-${{ matrix.name }}-${workerid}.tar"
 
           # kixdns prebuilt release tag (JohnsonRan/luci-app-kixdns)
-          kixdns_release_tag="v1.5.3"
+          kixdns_release_tag="v1.5.5"
 
           cat <<EOF | tee -a $GITHUB_ENV
           seed=$seed
@@ -220,7 +220,7 @@ jobs:
           chmod +x package/new/kixdns/prebuilt/kixdns
           ls -lh package/new/kixdns/prebuilt/kixdns
 
-      - name: Fetch daed (rust-daed v3.1.1-sticky apk payload)
+      - name: Fetch daed (rust-daed v3.1.2 apk payload)
         if: matrix.name != 'R4S'
         run: |
           set -e
@@ -228,11 +228,18 @@ jobs:
           python3 - <<'PYEOF'
           import gzip, io, tarfile, os, shutil, urllib.request
           dev = os.environ['DEV']
-          tag = 'v3.1.1-sticky'
-          # 注意：固定取归档的 apk v2（<dev>-v2.apk）。canonical 资产在 2026-09-13 之后
-          # 已重打包为 apk v3（ADB 容器，既不是 tar 也不是 gzip），这里用 tar 解不动。
+          tag = 'v3.1.2'
+          ver = tag.lstrip('v')
+          # v3.1.2 起资产命名为 rust-daed_<ver>-<DEV>-{v2,v3}.apk；
+          # 构建侧需要 tar 能解开的 apk v2（gzip）——v3 是 ADB 容器，这里用不了。
+          dev_up = {'r2s': 'R2S', 'r3s': 'R3S', 'r4s': 'R4S', 'x86': 'x86_64'}.get(dev, dev.upper())
+          names = [
+              'rust-daed_%s-%s-v2.apk' % (ver, dev_up),
+              'rust-daed-%s-v2.apk' % dev,
+              'rust-daed-%s.apk' % dev,
+          ]
           raw = None
-          for name in ('rust-daed-%s-v2.apk' % dev, 'rust-daed-%s.apk' % dev):
+          for name in names:
               url = 'https://github.com/Quan-0505/rust-daed/releases/download/%s/%s' % (tag, name)
               print('fetching', url)
               try:
@@ -241,7 +248,7 @@ jobs:
               except Exception as e:
                   print('  fetch failed:', e); continue
               if cand[:2] == b'\x1f\x8b':
-                  raw = cand; print('  ok, gzip payload', len(cand), 'bytes'); break
+                  raw = cand; print('  ok, gzip (apk v2) payload', len(cand), 'bytes'); break
               print('  skipped: not an apk v2 gzip payload (magic %s)' % cand[:4].hex())
           if raw is None:
               raise SystemExit('no apk v2 payload available for %s' % dev)
