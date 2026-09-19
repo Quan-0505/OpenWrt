@@ -273,7 +273,9 @@ jobs:
           # daemon serves the WebUI from /usr/share/daed/web by default; ship it
           web_src = os.path.join('PATCH', 'daed-web')
           web_dst = os.path.join(dst, 'usr', 'share', 'daed', 'web')
-          shutil.copytree(web_src, web_dst)
+          # v3.1.2 的载荷里已经带了 usr/share/daed/web，直接 copytree 到已存在目录会
+          # 抛 FileExistsError（Linux 同样），因此允许覆盖合并。
+          shutil.copytree(web_src, web_dst, dirs_exist_ok=True)
           print('web assets copied:', sum(len(fs) for _, _, fs in os.walk(web_dst)))
           PYEOF
           ls -lh openwrt/package/new/daed/prebuilt-data/usr/bin/daed
