@@ -127,6 +127,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ inputs.release_tag }}"
+          tag="${tag:-25.12.5}"   # workflow_dispatch 未传输入时兜底
           gh release view "$tag" >/dev/null || gh release create "$tag" \
             --title "OpenWrt $tag firmware + plugins" \
             --notes "CI publishes every device firmware (ext4 / sfs) plus the footstrap theme packages (apk / ipk) in this single release."
