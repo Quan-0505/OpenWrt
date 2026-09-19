@@ -2,6 +2,11 @@ name: Build footstrap ipk for OpenWrt 24.10
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "release tag to publish into (must match the firmware release)"
+        required: false
+        default: '25.12.5'
 
 jobs:
   ipk:
