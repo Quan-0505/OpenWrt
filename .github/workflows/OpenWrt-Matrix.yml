@@ -133,7 +133,7 @@ jobs:
           openwrt_source_name="openwrt-source-${{ matrix.name }}-${workerid}.tar"
 
           # kixdns prebuilt release tag (JohnsonRan/luci-app-kixdns)
-          kixdns_release_tag="v1.5.5"
+          kixdns_release_tag="v1.6.0"
 
           cat <<EOF | tee -a $GITHUB_ENV
           seed=$seed

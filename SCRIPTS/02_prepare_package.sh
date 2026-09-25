@@ -162,12 +162,12 @@ rm -rf feeds/packages/utils/coremark
 sed -i 's/+@KERNEL_DEBUG_INFO_BTF/+vmlinux-btf/' ./package/new/openwrt-einat-ebpf/Makefile
 git clone https://github.com/QiuSimons/vmlinux-btf ./package/new/vmlinux-btf
 # KIXDNS feed（kixdns 核心 + LuCI 应用；预编译 musl 静态二进制由 workflow 下载到 kixdns/prebuilt/）
-git clone -q --depth 1 -b v1.5.5 https://github.com/JohnsonRan/luci-app-kixdns /tmp/luci-app-kixdns
+git clone -q --depth 1 -b v1.6.0 https://github.com/JohnsonRan/luci-app-kixdns /tmp/luci-app-kixdns
 cp -rf /tmp/luci-app-kixdns/kixdns ./package/new/kixdns
 cp -rf /tmp/luci-app-kixdns/luci-app-kixdns ./package/new/luci-app-kixdns
 # LUCI 主题 footstrap（VizzleTF/luci-theme-footstrap，锁 commit）+ 自译中文语言包
 git clone -q --depth 1 https://github.com/VizzleTF/luci-theme-footstrap /tmp/luci-theme-footstrap
-git -C /tmp/luci-theme-footstrap fetch -q --depth 1 origin 0bc6986b236760f304903b3a6ae166eb5f6295a2
+git -C /tmp/luci-theme-footstrap fetch -q --depth 1 origin ce25f9e2244d4933c5d6629a497cde8f6b468c65
 git -C /tmp/luci-theme-footstrap checkout -q FETCH_HEAD
 rm -rf ./package/new/luci-theme-footstrap
 cp -rf /tmp/luci-theme-footstrap/luci-theme-footstrap ./package/new/luci-theme-footstrap
