@@ -165,6 +165,9 @@ git clone https://github.com/QiuSimons/vmlinux-btf ./package/new/vmlinux-btf
 git clone -q --depth 1 -b v1.6.0 https://github.com/JohnsonRan/luci-app-kixdns /tmp/luci-app-kixdns
 cp -rf /tmp/luci-app-kixdns/kixdns ./package/new/kixdns
 cp -rf /tmp/luci-app-kixdns/luci-app-kixdns ./package/new/luci-app-kixdns
+# v1.6.0 起 luci-app-kixdns 依赖 kixdns-stats（原生统计核心）；预编译二进制由 workflow 放到
+# package/new/kixdns-stats/prebuilt/kixdns-stats-core，存在即不拉 Go 工具链。
+cp -rf /tmp/luci-app-kixdns/kixdns-stats ./package/new/kixdns-stats
 # LUCI 主题 footstrap（VizzleTF/luci-theme-footstrap，锁 commit）+ 自译中文语言包
 git clone -q --depth 1 https://github.com/VizzleTF/luci-theme-footstrap /tmp/luci-theme-footstrap
 git -C /tmp/luci-theme-footstrap fetch -q --depth 1 origin ce25f9e2244d4933c5d6629a497cde8f6b468c65
