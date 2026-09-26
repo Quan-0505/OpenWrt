@@ -199,7 +199,7 @@ jobs:
           /bin/bash 02_target_only.sh
           /bin/bash 04_remove_upx.sh
 
-      - name: Fetch KIXDNS prebuilt static binary
+      - name: Fetch KIXDNS prebuilt static binaries
         run: |
           set -e
           if [ "${{ matrix.arch }}" = "x86/64" ]; then A=x86_64; else A=aarch64_generic; fi
@@ -209,16 +209,29 @@ jobs:
           cd openwrt
           python3 - <<'PYEOF'
           import gzip, io, tarfile, glob, os
-          ipk = glob.glob('/tmp/kix/kixdns_*.ipk')[0]
-          outer = tarfile.open(fileobj=io.BytesIO(gzip.decompress(open(ipk, 'rb').read())), mode='r:')
-          data = outer.extractfile('./data.tar.gz').read()
-          tf = tarfile.open(fileobj=io.BytesIO(gzip.decompress(data)), mode='r:')
-          f = tf.extractfile('./usr/bin/kixdns')
-          os.makedirs('package/new/kixdns/prebuilt', exist_ok=True)
-          open('package/new/kixdns/prebuilt/kixdns', 'wb').write(f.read())
+          # (来源 ipk 通配, ipk 内二进制路径, 目标包目录, 目标文件名)
+          # kixdns-stats 是 v1.6.0 新增包，luci-app-kixdns 依赖它；它支持预编译：
+          # 只要 package/new/kixdns-stats/prebuilt/kixdns-stats-core 存在就不会去拉 Go 工具链。
+          JOBS = [
+              ('/tmp/kix/kixdns_*.ipk',       './usr/bin/kixdns',             'kixdns',       'kixdns'),
+              ('/tmp/kix/kixdns-stats_*.ipk', './usr/libexec/kixdns-stats-core', 'kixdns-stats', 'kixdns-stats-core'),
+          ]
+          for pattern, member, pkg, fname in JOBS:
+              hits = glob.glob(pattern)
+              if not hits:
+                  raise SystemExit('missing %s in the release tarball' % pattern)
+              outer = tarfile.open(fileobj=io.BytesIO(gzip.decompress(open(hits[0], 'rb').read())), mode='r:')
+              data = outer.extractfile('./data.tar.gz').read()
+              tf = tarfile.open(fileobj=io.BytesIO(gzip.decompress(data)), mode='r:')
+              blob = tf.extractfile(member).read()
+              dst = os.path.join('package', 'new', pkg, 'prebuilt')
+              os.makedirs(dst, exist_ok=True)
+              path = os.path.join(dst, fname)
+              open(path, 'wb').write(blob)
+              os.chmod(path, 0o755)
+              print('%-42s -> %s (%d bytes)' % (member, path, len(blob)))
           PYEOF
-          chmod +x package/new/kixdns/prebuilt/kixdns
-          ls -lh package/new/kixdns/prebuilt/kixdns
+          ls -lh package/new/kixdns/prebuilt/kixdns package/new/kixdns-stats/prebuilt/kixdns-stats-core
 
       - name: Fetch daed (rust-daed v3.1.2 apk payload)
         if: matrix.name != 'R4S'
