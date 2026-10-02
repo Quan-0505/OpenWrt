@@ -1,9 +1,9 @@
 """Exercise OpenWrt GCC layouts without rebuilding the toolchain."""
 import os
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 bash = sys.argv[1] if len(sys.argv) > 1 else 'bash'
 helper = Path(__file__).with_name('daenext_toolchain.sh').resolve()
@@ -23,11 +23,11 @@ with tempfile.TemporaryDirectory(prefix='daenext-toolchain-') as temp:
     for label, sysroot in [('empty sysroot', ''), ('stale sysroot', '/nonexistent/daenext-sysroot'),
                            ('explicit sysroot', toolchain.as_posix())]:
         env = dict(os.environ, DAENEXT_TEST_SYSROOT=sysroot)
-        result = subprocess.run(command, env=env, text=True, capture_output=True)
+        result = subprocess.run(command, env=env, text=True, capture_output=True, check=False)
         assert result.returncode == 0, (label, result.stderr)
         assert 'DaeNext target headers:' in result.stdout
         print('PASS:', label)
     (toolchain / 'include/stdio.h').unlink()
-    result = subprocess.run(command, text=True, capture_output=True)
+    result = subprocess.run(command, text=True, capture_output=True, check=False)
     assert result.returncode != 0 and 'musl headers missing' in result.stderr
     print('PASS: missing headers fail with a diagnostic')
