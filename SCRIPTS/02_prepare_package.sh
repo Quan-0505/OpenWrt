@@ -170,7 +170,7 @@ cp -rf /tmp/luci-app-kixdns/luci-app-kixdns ./package/new/luci-app-kixdns
 cp -rf /tmp/luci-app-kixdns/kixdns-stats ./package/new/kixdns-stats
 # LUCI 主题 footstrap（VizzleTF/luci-theme-footstrap，锁 commit）+ 自译中文语言包
 git clone -q --depth 1 https://github.com/VizzleTF/luci-theme-footstrap /tmp/luci-theme-footstrap
-git -C /tmp/luci-theme-footstrap fetch -q --depth 1 origin ce25f9e2244d4933c5d6629a497cde8f6b468c65
+git -C /tmp/luci-theme-footstrap fetch -q --depth 1 origin 726d612365d3acc01c7d4375c6367af0e57ad58a
 git -C /tmp/luci-theme-footstrap checkout -q FETCH_HEAD
 rm -rf ./package/new/luci-theme-footstrap
 cp -rf /tmp/luci-theme-footstrap/luci-theme-footstrap ./package/new/luci-theme-footstrap
