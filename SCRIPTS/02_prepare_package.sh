@@ -170,14 +170,14 @@ cp -rf /tmp/luci-app-kixdns/luci-app-kixdns ./package/new/luci-app-kixdns
 cp -rf /tmp/luci-app-kixdns/kixdns-stats ./package/new/kixdns-stats
 # LUCI 主题 footstrap（VizzleTF/luci-theme-footstrap，锁 commit）+ 自译中文语言包
 git clone -q --depth 1 https://github.com/VizzleTF/luci-theme-footstrap /tmp/luci-theme-footstrap
-git -C /tmp/luci-theme-footstrap fetch -q --depth 1 origin 726d612365d3acc01c7d4375c6367af0e57ad58a
+git -C /tmp/luci-theme-footstrap fetch -q --depth 1 origin 246337d51889860661bb4662b2c10f88c20d5ccd
 git -C /tmp/luci-theme-footstrap checkout -q FETCH_HEAD
 rm -rf ./package/new/luci-theme-footstrap
 cp -rf /tmp/luci-theme-footstrap/luci-theme-footstrap ./package/new/luci-theme-footstrap
 mkdir -p ./package/new/luci-theme-footstrap/po/zh_Hans
 cp -f ../PATCH/theme-footstrap-zh/zh_Hans/footstrap.po ./package/new/luci-theme-footstrap/po/zh_Hans/footstrap.po
 # DAED（DaedNext Rust 内核 sticky 版）：整包替换 OpenWrt-Add 的 Go daed/luci-app-daed
-# 载荷由 workflow 从 Quan-0505/rust-daed v3.1.1-sticky 的 <设备>.apk 解包到 package/new/daed/prebuilt-data/
+# 载荷由 workflow 从 Quan-0505/rust-daed v3.1.3 的 rust-daed-<设备>.apk 解包到 package/new/daed/prebuilt-data/
 rm -rf ./package/new/luci-app-daed
 rm -rf ./package/new/daed
 cp -rf ../PATCH/daed-pkg/daed ./package/new/daed
