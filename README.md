@@ -29,7 +29,8 @@
 - 🧩 **只做精简**：应用层只集成 **KixDNS**（Rust DNS 分流/转发 + LuCI）与 **DaedNext**（daed Rust 内核 + 3.1.0 Web 面板），不打包 PassWall / OpenClash / MosDNS / SSRP 等整包套件。
 - ⚙️ **内核为 dae 对齐**：内核带 eBPF 所需特性——`CONFIG_VETH`、`NET_SCH_INGRESS`（clsact）、`NET_CLS_ACT`、`NET_CLS_BPF` 与 **BTF（`/sys/kernel/btf/vmlinux`）**，R4S 构建时还会在 CI 内校验 BTF 与 web 资产。
 - 🎨 **中文主题**：Footstrap 主题 + 自译 `zh_Hans` 语言包（LuCI 界面为中文）。
-- ⚡ **YAOF 优化基础**：保留 BBRv3、LRNG、FullCone 及机型相关的 CPU/NIC 调优。
+- ⚡ **YAOF 优化基础**：保留 BBRv3、LRNG、FullCone 及机型相关的 CPU/NIC 调优；Broadcom FullCone 改用 YAOF 当前的 conntrack-helper 补丁组，避免旧 nft-fullcone 与新版 firewall4 补丁冲突。
+- 🧰 **补丁跟随上游**：miniupnpd 的端口转发兼容选项按当前 packages feed 配置更新，避免对上游已包含的初始化脚本重复打补丁。
 - 🔧 **配置可追溯**：机型选包在 `SEED/`，脚本与补丁在 `SCRIPTS/`、`PATCH/`。
 
 <a id="downloads"></a>

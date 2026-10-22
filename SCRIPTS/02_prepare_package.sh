@@ -93,19 +93,9 @@ sed -i '/luci-app-attendedsysupgrade/d' feeds/luci/collections/luci-nginx/Makefi
 cp -rf ../PATCH/kernel/bcmfullcone/* ./target/linux/generic/hack-${KERNEL_VERSION}/
 # set nf_conntrack_expect_max for fullcone
 wget -qO - https://github.com/openwrt/openwrt/commit/bbf39d07.patch | patch -p1
-echo "net.netfilter.nf_conntrack_helper = 1" >>./package/kernel/linux/files/sysctl-nf-conntrack.conf
 # FW4
 mkdir -p package/network/config/firewall4/patches
 #cp -f ../PATCH/pkgs/firewall/firewall4_patches/*.patch ./package/network/config/firewall4/patches/
-mkdir -p package/libs/libnftnl/patches
-cp -f ../PATCH/pkgs/firewall/libnftnl/*.patch ./package/libs/libnftnl/patches/
-sed -i '/PKG_INSTALL:=/iPKG_FIXUP:=autoreconf' package/libs/libnftnl/Makefile
-mkdir -p package/network/utils/nftables/patches
-cp -f ../PATCH/pkgs/firewall/nftables/*.patch ./package/network/utils/nftables/patches/
-# Patch LuCI 以增添 FullCone 开关
-pushd feeds/luci
-patch -p1 <../../../PATCH/pkgs/firewall/luci/0001-luci-app-firewall-add-nft-fullcone-and-bcm-fullcone-.patch
-popd
 
 ### Shortcut-FE 部分 ###
 # Patch Kernel 以支持 Shortcut-FE
@@ -129,14 +119,14 @@ pushd feeds/luci
 patch -p1 <../../../PATCH/pkgs/firewall/luci/0004-luci-add-firewall-add-custom-nft-rule-support.patch
 popd
 
+### Broadcom FullCone NAT (requires NAT6/custom nft rules above) ###
+pushd feeds/luci
+patch -p1 <../../../PATCH/pkgs/firewall/luci/0001-luci-app-firewall-add-brcm-fullcone-nat-option.patch
+popd
+
 ### natflow 部分 ###
 pushd feeds/luci
 patch -p1 <../../../PATCH/pkgs/firewall/luci/0005-luci-app-firewall-add-natflow-offload-support.patch
-popd
-
-### fullcone6 ###
-pushd feeds/luci
-patch -p1 <../../../PATCH/pkgs/firewall/luci/0007-luci-app-firewall-add-fullcone6-option-for-nftables-.patch
 popd
 
 ### Other Kernel Hack 部分 ###
@@ -156,6 +146,9 @@ sed -i 's,@CMDLINE@ noinitrd,noinitrd mitigations=off,g' target/linux/x86/image/
 
 ### ADD PKG 部分 ###
 cp -rf ../OpenWrt-Add ./package/new
+# nft-fullcone is superseded by the Broadcom conntrack-helper implementation.
+rm -rf ./package/new/lede_pkg/fullconenat-nft
+sed -i 's/ +kmod-nft-fullcone//' ./package/new/addition-trans-zh/Makefile
 rm -rf feeds/packages/net/{xray-core,v2ray-core,v2ray-geodata,sing-box,frp,microsocks,shadowsocks-libev,zerotier,daed}
 rm -rf feeds/luci/applications/{luci-app-frps,luci-app-frpc,luci-app-zerotier}
 rm -rf feeds/packages/utils/coremark

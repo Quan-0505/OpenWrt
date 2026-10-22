@@ -29,7 +29,8 @@ A streamlined firmware based on [QiuSimons/YAOF](https://github.com/QiuSimons/YA
 - 🧩 **Streamlined only**: the application layer integrates just **KixDNS** (Rust DNS routing/forwarding + LuCI) and **DaedNext** (daed Rust core + 3.1.0 web panel); full suites such as PassWall / OpenClash / MosDNS / SSRP are not packaged.
 - ⚙️ **Kernel aligned with dae**: the kernel carries the features eBPF requires — `CONFIG_VETH`, `NET_SCH_INGRESS` (clsact), `NET_CLS_ACT`, `NET_CLS_BPF` and **BTF (`/sys/kernel/btf/vmlinux`)**; R4S builds additionally verify BTF and the web assets inside CI.
 - 🎨 **Chinese theme**: Footstrap theme + self-translated `zh_Hans` language pack (the LuCI interface is in Chinese).
-- ⚡ **YAOF-optimized base**: keeps BBRv3, LRNG, FullCone and device-specific CPU/NIC tuning.
+- ⚡ **YAOF-optimized base**: keeps BBRv3, LRNG, FullCone and device-specific CPU/NIC tuning; Broadcom FullCone now follows YAOF's current conntrack-helper patch set to avoid conflicts between the obsolete nft-fullcone patches and newer firewall4 patches.
+- 🧰 **Upstream-aligned patches**: the miniupnpd port-forwarding option now patches the current packages-feed configuration without reapplying initialization-script changes already present upstream.
 - 🔧 **Traceable configuration**: per-device package selection lives in `SEED/`, scripts and patches in `SCRIPTS/` and `PATCH/`.
 
 <a id="downloads"></a>
