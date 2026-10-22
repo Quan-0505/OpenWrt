@@ -37,7 +37,7 @@ A streamlined firmware based on [QiuSimons/YAOF](https://github.com/QiuSimons/YA
 
 ## 📦 Firmware download
 
-All artifacts are gathered in **[a single Release](https://github.com/Quan-0505/OpenWrt/releases)** (tagged with the current OpenWrt version, such as `25.12.5`):
+All artifacts are gathered in **[a single Release](https://github.com/Quan-0505/OpenWrt/releases)** (tagged with the current OpenWrt version, such as `25.12.6`):
 firmware for all four devices plus the footstrap theme packages are all in there; every CI build publishes the newest artifacts there and automatically cleans up older files for the same device.
 Filenames include the device, the build date and the OpenWrt version.
 

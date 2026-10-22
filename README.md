@@ -37,7 +37,7 @@
 
 ## 📦 固件下载
 
-所有产物集中在 **[一个 Release](https://github.com/Quan-0505/OpenWrt/releases)**（tag 为当前 OpenWrt 版本，如 `25.12.5`）：
+所有产物集中在 **[一个 Release](https://github.com/Quan-0505/OpenWrt/releases)**（tag 为当前 OpenWrt 版本，如 `25.12.6`）：
 四机型固件 + footstrap 主题插件都在其中；每次 CI 构建把最新产物发到这里，并自动清理同机型的旧文件。
 文件名含机型、构建日期与 OpenWrt 版本。
 
