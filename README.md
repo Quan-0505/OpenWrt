@@ -168,3 +168,7 @@ apk add some-package                             # 来自配置好的源
 ## 📄 许可
 
 本仓库采用 [GNU General Public License v3.0](LICENSE)。固件内各组件遵循其上游许可证，具体以对应项目的许可文件为准。
+
+## 2026-11-02 上游同步
+
+已合并 YAOF `2469d54` 的最新源码。上游新增 ImageBuilder 的 profiles/scripts 保留在仓库中；本定制分支继续使用既有源码编译流程，以保留 KixDNS、DAED 和 R2S/R3S/R4S/X86 四机型的内核及插件配置。新的构建结果以 Actions 的实际校验为准。
