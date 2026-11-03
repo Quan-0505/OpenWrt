@@ -414,6 +414,18 @@ jobs:
           set -euo pipefail
           bash SCRIPTS/build_daenext_r4s.sh
 
+      - name: Reclaim R4S native build intermediates before firmware compilation
+        if: inputs.build_firmware && matrix.name == 'R4S'
+        run: |
+          set -euo pipefail
+          # The verified binary and frontend have already been copied into the
+          # OpenWrt package. Retaining Cargo/Node intermediates exhausted the
+          # hosted runner during the following kernel build.
+          test -s openwrt/package/new/daed/prebuilt-data/usr/bin/daed
+          test -s openwrt/package/new/daed/prebuilt-data/usr/share/daed/web/index.html
+          rm -rf -- "$GITHUB_WORKSPACE/daenext-core/target" "$GITHUB_WORKSPACE/daenext-web/node_modules" "$GITHUB_WORKSPACE/daenext-web/apps/web/node_modules"
+          df -h .
+
       - name: Compile Openwrt
         if: inputs.build_firmware
         working-directory: ${{ github.workspace }}/openwrt

@@ -225,6 +225,6 @@ diff --git a/root/usr/share/ucode/fw4.uc b/root/usr/share/ucode/fw4.uc
 +			zone.dflags.dnat = false;
 +
 +		if ((zone.auto_helper && !(zone.masq || zone.masq6 || zone.fullcone4 || zone.fullcone6)) || length(zone.helper)) {
- 			zone.dflags.helper = true;
+ 			zone.dflags.helper = false;
  
  			for (let helper in (length(zone.helper) ? zone.helper : this.state.helpers)) {
