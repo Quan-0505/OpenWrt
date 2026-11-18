@@ -443,7 +443,9 @@ jobs:
           # to the prebuilt payload; assert it is a real aarch64 ELF with the product CLI instead.
           test -x "$root/usr/bin/daed"
           file "$root/usr/bin/daed" | grep -q 'ELF 64-bit.*ARM aarch64'
-          strings -a "$root/usr/bin/daed" | grep -q 'daed run -c'
+          test -s "$root/usr/share/daed/source-revisions"
+          qemu-aarch64 "$root/usr/bin/daed" --version | grep 'DaeNext 3.1.0 core=218bdf72'
+          qemu-aarch64 "$root/usr/bin/daed" run --help >/dev/null
           test -x "$root/etc/init.d/daed"
           test -n "$(find "$root/etc/rc.d" -name '*daed' -print -quit)"
           python3 SCRIPTS/verify_daenext_assets.py "$root/usr/share/daed/web"
@@ -478,7 +480,7 @@ jobs:
             echo "candidate: $cand"
             file "$cand" || true
             if readelf -h "$cand" >/dev/null 2>&1; then
-              if readelf -S "$cand" 2>/dev/null | grep -q '\.BTF '; then
+              if readelf -SW "$cand" 2>/dev/null | grep '\.BTF ' >/dev/null; then
                 echo "BTF section found in $cand"; btf_ok=1
               fi
             fi
