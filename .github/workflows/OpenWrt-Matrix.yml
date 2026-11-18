@@ -287,6 +287,7 @@ jobs:
                       os.makedirs(os.path.dirname(p), exist_ok=True)
                       with open(p, 'wb') as f:
                           f.write(src.read())
+                      os.chmod(p, 0o755 if m.mode & 0o111 else 0o644)
           # sanity
           b = os.path.join(dst, 'usr', 'bin', 'daed')
           print('payload daed bytes:', os.path.getsize(b))
@@ -445,8 +446,8 @@ jobs:
           file "$root/usr/bin/daed" | grep -q 'ELF 64-bit.*ARM aarch64'
           test -s "$root/usr/share/daed/source-revisions"
           qemu-aarch64 "$root/usr/bin/daed" --version | grep 'DaeNext 3.1.0 core=218bdf72'
-          qemu-aarch64 "$root/usr/bin/daed" run --help >/dev/null
           test -x "$root/etc/init.d/daed"
+          grep -Fq 'procd_set_param command /usr/bin/daed run -c ' "$root/etc/init.d/daed"
           test -n "$(find "$root/etc/rc.d" -name '*daed' -print -quit)"
           python3 SCRIPTS/verify_daenext_assets.py "$root/usr/share/daed/web"
           # 固件必须带上 daed 数据面（netkit）所需的 fw4 放行规则，否则节点全部拨号失败
@@ -462,7 +463,7 @@ jobs:
           # BTF evidence: scan every candidate vmlinux-ish artifact, print what each really is,
           # and accept the check when a real ELF carries a .BTF section (or a .btf side artifact exists).
           # 注意：必须排除 toolchain 自带的 linux 头文件目录，否则会误选到没有 BTF 配置的那份。
-          kdir=$(find openwrt/build_dir -type d -path '*/linux-6.12*' -not -path '*toolchain*' -print -quit)
+          kdir=$(find openwrt/build_dir -maxdepth 4 -type d -path '*/linux-rockchip_armv8/linux-6.12.*' -print -quit)
           test -n "$kdir"
           echo "kernel dir: $kdir"
           if grep -q '^CONFIG_DEBUG_INFO_BTF=y$' "$kdir/.config"; then
