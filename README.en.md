@@ -37,41 +37,33 @@ A streamlined firmware based on [QiuSimons/YAOF](https://github.com/QiuSimons/YA
 
 ## 📦 Firmware download
 
-All artifacts are gathered in **[a single Release](https://github.com/Quan-0505/OpenWrt/releases)** (tagged with the current OpenWrt version, such as `25.12.6`):
-firmware for all four devices plus the footstrap theme packages are all in there; every CI build publishes the newest artifacts there and automatically cleans up older files for the same device.
-Filenames include the device, the build date and the OpenWrt version.
+**Latest firmware** · [OpenWrt 25.12.6-20261118](https://github.com/Quan-0505/OpenWrt/releases/tag/25.12.6-20261118)
 
-| Device | Filename prefix | Platform |
-|---|---|---|
-| NanoPi R2S | `R2S-OpenWrt-*` | RK3328 / ARM64 |
-| NanoPi R3S | `R3S-OpenWrt-*` | RK3566 / ARM64 |
-| NanoPi R4S | `R4S-OpenWrt-*` | RK3399 / ARM64 |
-| x86_64 soft router | `X86-OpenWrt-*` | x86_64 |
+**Previous release** · [OpenWrt 25.12.5](https://github.com/Quan-0505/OpenWrt/releases/tag/25.12.5)
 
-| Format | Description |
-|---|---|
-| `*-ext4.zip` | ext4 writable root filesystem |
-| `*-sfs.zip` | SquashFS read-only base system, with configuration written to a writable layer |
+Built on November 18, 2026 from [e0a1823](https://github.com/Quan-0505/OpenWrt/commit/e0a18239b97ef4cf9c93824a1164ab7121912fc0) after syncing [YAOF 25.12 through fb2fc54](https://github.com/QiuSimons/YAOF/commit/fb2fc542411461c4856d2137ae19a263a8ed070e). This build updates firewall4 compatibility and verifies the daed payload and kernel BTF for R4S. All eight ZIPs passed image checks and SHA-256 verification. Hardware boot testing is pending.
 
-Inside the zip is `openwrt-<target>-<device>-……-sysupgrade.img.gz` (**a complete disk image**).
+| Device | Platform | ext4 | SquashFS |
+|---|---|---|---|
+| NanoPi R2S | RK3328 / ARM64 | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R2S-OpenWrt-2026-11-18-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R2S-OpenWrt-2026-11-18-25.12.6-sfs.zip) |
+| NanoPi R3S | RK3566 / ARM64 | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R3S-OpenWrt-2026-11-18-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R3S-OpenWrt-2026-11-18-25.12.6-sfs.zip) |
+| NanoPi R4S | RK3399 / ARM64 | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R4S-OpenWrt-2026-11-18-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R4S-OpenWrt-2026-11-18-25.12.6-sfs.zip) |
+| x86_64 | x86_64 / EFI | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/X86-OpenWrt-2026-11-18-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/X86-OpenWrt-2026-11-18-25.12.6-sfs.zip) |
 
-- **The image already carries JSON metadata** (appended to the end of the `.img.gz` file), so you can upgrade online directly with `sysupgrade`.
-- ⚠️ **Flash the `.gz` directly, do not decompress it first**: the metadata sits after the gzip stream and `gunzip` throws it away,
-  after which fstools rejects the image (`Firmware image couldn't be validated: no JSON input`, and `-F` does not help either).
-- Offline card writing: decompress and write with `dd` / balenaEtcher. For NanoPi write to a TF card or eMMC; for x86_64 write to the target boot disk.
+ext4 uses a writable root filesystem. SquashFS uses a read-only base with a writable overlay. Each ZIP contains one compressed disk image. NanoPi images end in `sysupgrade.img.gz`, and x86_64 EFI images end in `combined-efi.img.gz`.
 
 <a id="quick-start"></a>
 
 ## 🚀 Quick start
 
 1. Download the firmware ZIP for your device and extract the `*.img.gz` inside it (**do not decompress it**).
-2. Online upgrade: transfer the `.gz` to the device and flash it directly——
+2. For NanoPi, keep the `.img.gz` intact to preserve its upgrade metadata. Transfer it to the device and validate it before flashing.
    ```sh
    scp openwrt-*-sysupgrade.img.gz root@192.168.2.1:/tmp/
    ssh root@192.168.2.1 'sysupgrade -T /tmp/openwrt-*-sysupgrade.img.gz && sysupgrade -v -k /tmp/openwrt-*-sysupgrade.img.gz'
    ```
    Whitelisted files under `/etc` are kept by default (write the paths you want to keep into `/etc/sysupgrade.conf`). `-k` records the list of installed packages.
-   Offline card writing: decompress to `.img`, then write to a TF card / eMMC / boot disk with `dd` or balenaEtcher.
+   For offline installation, decompress to `.img` and write it to the NanoPi TF card or eMMC, or to the x86_64 EFI boot disk.
 3. After boot, connect your computer to a LAN port and open **[http://192.168.2.1](http://192.168.2.1)** in a browser to enter LuCI and finish the network and account configuration.
 
 | Item | Default value |
@@ -111,7 +103,7 @@ apk add some-package                             # from a configured feed
 - In the releases of [rust-daed](https://github.com/Quan-0505/rust-daed) and [daed-kdae](https://github.com/Quan-0505/daed-kdae),
   the canonical asset `*-<device>.apk` **has been repackaged as apk v3** and can be installed directly with `apk add` on 25.12; the old format is kept as `*-<device>-v2.apk`.
   This repository's firmware already includes daed, so there is normally no need to install it separately (the two share `/usr/bin/daed`, so only one can be installed).
-- The theme packages (same baseline as this firmware) are in the **same Release**: `luci-theme-footstrap-<ver>.apk` + `luci-i18n-footstrap-zh-cn-<ver>.apk` (25.12 / apk v3),
+- Standalone Footstrap packages are available under Assets in the [25.12.5 release](https://github.com/Quan-0505/OpenWrt/releases/tag/25.12.5). It includes `luci-theme-footstrap-<ver>.apk` + `luci-i18n-footstrap-zh-cn-<ver>.apk` (25.12 / apk v3),
   `luci-theme-footstrap_<ver>_all.ipk` + `luci-i18n-footstrap-zh-cn_<ver>_all.ipk` (24.10 / opkg).
 
 

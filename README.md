@@ -37,41 +37,33 @@
 
 ## 📦 固件下载
 
-所有产物集中在 **[一个 Release](https://github.com/Quan-0505/OpenWrt/releases)**（tag 为当前 OpenWrt 版本，如 `25.12.6`）：
-四机型固件 + footstrap 主题插件都在其中；每次 CI 构建把最新产物发到这里，并自动清理同机型的旧文件。
-文件名含机型、构建日期与 OpenWrt 版本。
+**最新固件** · [OpenWrt 25.12.6-20261118](https://github.com/Quan-0505/OpenWrt/releases/tag/25.12.6-20261118)
 
-| 设备 | 文件名前缀 | 平台 |
-|---|---|---|
-| NanoPi R2S | `R2S-OpenWrt-*` | RK3328 / ARM64 |
-| NanoPi R3S | `R3S-OpenWrt-*` | RK3566 / ARM64 |
-| NanoPi R4S | `R4S-OpenWrt-*` | RK3399 / ARM64 |
-| x86_64 软路由 | `X86-OpenWrt-*` | x86_64 |
+**旧版下载** · [OpenWrt 25.12.5](https://github.com/Quan-0505/OpenWrt/releases/tag/25.12.5)
 
-| 格式 | 说明 |
-|---|---|
-| `*-ext4.zip` | ext4 可写根文件系统 |
-| `*-sfs.zip` | SquashFS 只读基础系统，配置写入可写层 |
+2026-11-18 构建自 [e0a1823](https://github.com/Quan-0505/OpenWrt/commit/e0a18239b97ef4cf9c93824a1164ab7121912fc0)。本次同步 [YAOF 25.12 至 fb2fc54](https://github.com/QiuSimons/YAOF/commit/fb2fc542411461c4856d2137ae19a263a8ed070e)，更新 firewall4 兼容性，并核验 R4S 的 daed 载荷和内核 BTF。8 个 ZIP 均通过镜像检查和 SHA-256 校验，实机启动待验证。
 
-zip 内是 `openwrt-<target>-<device>-……-sysupgrade.img.gz`（**完整磁盘镜像**）。
+| 设备 | 平台 | ext4 | SquashFS |
+|---|---|---|---|
+| NanoPi R2S | RK3328 / ARM64 | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R2S-OpenWrt-2026-11-18-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R2S-OpenWrt-2026-11-18-25.12.6-sfs.zip) |
+| NanoPi R3S | RK3566 / ARM64 | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R3S-OpenWrt-2026-11-18-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R3S-OpenWrt-2026-11-18-25.12.6-sfs.zip) |
+| NanoPi R4S | RK3399 / ARM64 | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R4S-OpenWrt-2026-11-18-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R4S-OpenWrt-2026-11-18-25.12.6-sfs.zip) |
+| x86_64 | x86_64 / EFI | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/X86-OpenWrt-2026-11-18-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/X86-OpenWrt-2026-11-18-25.12.6-sfs.zip) |
 
-- **镜像已带 JSON metadata**（附在 `.img.gz` 文件末尾），可直接 `sysupgrade` 在线升级。
-- ⚠️ **直接刷 `.gz`，不要先解压**：metadata 位于 gzip 流之后，`gunzip` 会把它丢掉，
-  之后 fstools 会拒绝该镜像（`Firmware image couldn't be validated: no JSON input`，`-F` 也无效）。
-- 离线写卡：解压后 `dd` / balenaEtcher 写入。NanoPi 写 TF 卡或 eMMC；x86_64 写目标启动盘。
+ext4 使用可写根文件系统。SquashFS 使用只读基础系统和可写覆盖层。每个 ZIP 内含一份压缩磁盘镜像，NanoPi 文件以 `sysupgrade.img.gz` 结尾，x86_64 EFI 文件以 `combined-efi.img.gz` 结尾。
 
 <a id="quick-start"></a>
 
 ## 🚀 快速开始
 
 1. 下载对应设备的固件 ZIP，解出其中的 `*.img.gz`（**不要解压**）。
-2. 在线升级：把 `.gz` 传到设备后直接刷——
+2. NanoPi 在线升级时直接使用 `.img.gz`，以保留升级元数据。把文件传到设备，校验通过后再刷写。
    ```sh
    scp openwrt-*-sysupgrade.img.gz root@192.168.2.1:/tmp/
    ssh root@192.168.2.1 'sysupgrade -T /tmp/openwrt-*-sysupgrade.img.gz && sysupgrade -v -k /tmp/openwrt-*-sysupgrade.img.gz'
    ```
    默认保留 `/etc` 内白名单文件（把要保留的路径写进 `/etc/sysupgrade.conf`）。`-k` 会记录已装包列表。
-   离线写卡：解压成 `.img` 后 `dd` 或 balenaEtcher 写入 TF 卡 / eMMC / 启动盘。
+   离线安装时解压为 `.img`，写入 NanoPi 的 TF 卡或 eMMC，或写入 x86_64 的 EFI 启动盘。
 3. 启动后电脑接 LAN 口，浏览器打开 **[http://192.168.2.1](http://192.168.2.1)** 进入 LuCI 完成网络与账户配置。
 
 | 项目 | 默认值 |
@@ -111,7 +103,7 @@ apk add some-package                             # 来自配置好的源
 - [rust-daed](https://github.com/Quan-0505/rust-daed)、[daed-kdae](https://github.com/Quan-0505/daed-kdae) 的 release 里，
   规范资产 `*-<device>.apk` **已重打包为 apk v3**，可在 25.12 上直接 `apk add`；旧格式保留为 `*-<device>-v2.apk`。
   本仓库固件本身已内置 daed，正常无需另装（两者共用 `/usr/bin/daed`，只能装一个）。
-- 主题包（与本固件同基线）也在**同一个 Release** 里：`luci-theme-footstrap-<ver>.apk` + `luci-i18n-footstrap-zh-cn-<ver>.apk`（25.12 / apk v3）、
+- 独立 Footstrap 主题包见 [25.12.5 发布页](https://github.com/Quan-0505/OpenWrt/releases/tag/25.12.5)的附件，包括`luci-theme-footstrap-<ver>.apk` + `luci-i18n-footstrap-zh-cn-<ver>.apk`（25.12 / apk v3）、
   `luci-theme-footstrap_<ver>_all.ipk` + `luci-i18n-footstrap-zh-cn_<ver>_all.ipk`（24.10 / opkg）。
 
 
