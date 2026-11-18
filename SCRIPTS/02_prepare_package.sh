@@ -153,7 +153,10 @@ rm -rf feeds/packages/net/{xray-core,v2ray-core,v2ray-geodata,sing-box,frp,micro
 rm -rf feeds/luci/applications/{luci-app-frps,luci-app-frpc,luci-app-zerotier}
 rm -rf feeds/packages/utils/coremark
 sed -i 's/+@KERNEL_DEBUG_INFO_BTF/+vmlinux-btf/' ./package/new/openwrt-einat-ebpf/Makefile
-git clone https://github.com/QiuSimons/vmlinux-btf ./package/new/vmlinux-btf
+rm -rf ./package/new/apps/vmlinux-btf ./package/new/legacy/openwrt_helloworld/vmlinux-btf
+git clone https://github.com/QiuSimons/vmlinux-btf ./package/new/vmlinux-btf || exit 1
+# Pahole's detached encoder writes raw BTF without adding a section to the ELF.
+sed -i 's@$(BTF_PAHOLE) -C sk_buff $(PKG_BUILD_DIR)/shadow_btf.o@$(BTF_PAHOLE) -F btf -C sk_buff $(PKG_BUILD_DIR)/vmlinux-btf@' ./package/new/vmlinux-btf/Makefile
 # KIXDNS feed（kixdns 核心 + LuCI 应用；预编译 musl 静态二进制由 workflow 下载到 kixdns/prebuilt/）
 git clone -q --depth 1 -b v1.6.0 https://github.com/JohnsonRan/luci-app-kixdns /tmp/luci-app-kixdns
 cp -rf /tmp/luci-app-kixdns/kixdns ./package/new/kixdns
