@@ -165,10 +165,11 @@ cp -rf /tmp/luci-app-kixdns/kixdns-stats ./package/new/kixdns-stats
 git clone -q --depth 1 https://github.com/VizzleTF/luci-theme-footstrap /tmp/luci-theme-footstrap
 git -C /tmp/luci-theme-footstrap fetch -q --depth 1 origin 246337d51889860661bb4662b2c10f88c20d5ccd
 git -C /tmp/luci-theme-footstrap checkout -q FETCH_HEAD
-rm -rf ./package/new/luci-theme-footstrap
-cp -rf /tmp/luci-theme-footstrap/luci-theme-footstrap ./package/new/luci-theme-footstrap
-mkdir -p ./package/new/luci-theme-footstrap/po/zh_Hans
-cp -f ../PATCH/theme-footstrap-zh/zh_Hans/footstrap.po ./package/new/luci-theme-footstrap/po/zh_Hans/footstrap.po
+footstrap=./feeds/luci/themes/luci-theme-footstrap
+rm -rf "$footstrap" ./package/new/luci-theme-footstrap
+cp -rf /tmp/luci-theme-footstrap/luci-theme-footstrap "$footstrap"
+mkdir -p "$footstrap/po/zh_Hans"
+cp -f ../PATCH/theme-footstrap-zh/zh_Hans/footstrap.po "$footstrap/po/zh_Hans/footstrap.po"
 # DAED（DaedNext Rust 内核 sticky 版）：整包替换 OpenWrt-Add 的 Go daed/luci-app-daed
 # 载荷由 workflow 从 Quan-0505/rust-daed v3.1.3 的 rust-daed-<设备>.apk 解包到 package/new/daed/prebuilt-data/
 rm -rf ./package/new/luci-app-daed
@@ -211,9 +212,10 @@ sed -i '/REQUIRE_IMAGE_METADATA/d' target/linux/rockchip/armv8/base-files/lib/up
 wget https://github.com/coolsnowwolf/lede/raw/refs/heads/master/target/linux/rockchip/patches-6.12/991-arm64-dts-rockchip-add-more-cpu-operating-points-for.patch -O target/linux/rockchip/patches-6.12/991.patch
 wget https://github.com/coolsnowwolf/lede/raw/refs/heads/master/target/linux/rockchip/patches-6.12/992-rockchip-rk3399-overclock-to-2.2-1.8-GHz.patch -O target/linux/rockchip/patches-6.12/992.patch
 # 更换 Nodejs 版本
-rm -rf ./feeds/packages/lang/node
-rm -rf ./package/new/feeds_packages_lang_node-prebuilt
-cp -rf ../OpenWrt-Add/feeds_packages_lang_node-prebuilt ./feeds/packages/lang/node
+if [ -d ../OpenWrt-Add/feeds_packages_lang_node-prebuilt ]; then
+  rm -rf ./feeds/packages/lang/node ./package/new/feeds_packages_lang_node-prebuilt
+  cp -rf ../OpenWrt-Add/feeds_packages_lang_node-prebuilt ./feeds/packages/lang/node
+fi
 # 更换 golang 版本
 rm -rf ./feeds/packages/lang/golang
 cp -rf ../openwrt_pkg_ma/lang/golang ./feeds/packages/lang/golang
