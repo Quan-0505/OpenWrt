@@ -175,7 +175,7 @@ mkdir -p "$footstrap/po/zh_Hans"
 cp -f ../PATCH/theme-footstrap-zh/zh_Hans/footstrap.po "$footstrap/po/zh_Hans/footstrap.po"
 # DAED（DaedNext Rust 内核 sticky 版）：整包替换 OpenWrt-Add 的 Go daed/luci-app-daed
 # 载荷由 workflow 从 Quan-0505/rust-daed v3.1.3 的 rust-daed-<设备>.apk 解包到 package/new/daed/prebuilt-data/
-rm -rf ./package/new/luci-app-daed
+rm -rf ./package/new/luci-app-daed ./package/new/legacy/luci-app-daed
 rm -rf ./package/new/daed
 cp -rf ../PATCH/daed-pkg/daed ./package/new/daed
 # Kernel features required by daed (DaedNext Rust aya eBPF): veth peer + clsact tc attach + BTF.
