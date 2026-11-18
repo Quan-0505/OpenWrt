@@ -14,10 +14,8 @@ Signed-off-by: QiuSimons <45143996+QiuSimons@users.noreply.github.com>
 diff --git a/root/etc/config/firewall b/root/etc/config/firewall
 --- a/root/etc/config/firewall
 +++ b/root/etc/config/firewall
-@@ -5,6 +5,8 @@
+@@ -4,4 +4,6 @@
  	option forward		REJECT
- # Uncomment this line to disable ipv6 rules
- #	option disable_ipv6	1
 +	option fullcone4	0
 +	option fullcone6	0
  
@@ -210,9 +208,10 @@ diff --git a/root/usr/share/ucode/fw4.uc b/root/usr/share/ucode/fw4.uc
  		if (zone.mtu_fix && this.kernel < 0x040a0000) {
  			this.warn_section(data, "option 'mtu_fix' requires kernel 4.10 or later");
  			return;
-@@ -2205,10 +2247,15 @@
+@@ -2205,11 +2247,16 @@
  		zone.related_subnets = related_subnets;
  		zone.related_physdevs = related_physdevs;
+ 		zone.related_l3devs = related_l3devs;
  
 -		if (zone.masq || zone.masq6)
 +		if (zone.fullcone4 || zone.fullcone6 || zone.masq || zone.masq6)
@@ -225,6 +224,6 @@ diff --git a/root/usr/share/ucode/fw4.uc b/root/usr/share/ucode/fw4.uc
 +			zone.dflags.dnat = false;
 +
 +		if ((zone.auto_helper && !(zone.masq || zone.masq6 || zone.fullcone4 || zone.fullcone6)) || length(zone.helper)) {
- 			zone.dflags.helper = true;
+ 			zone.dflags.helper = false;
  
  			for (let helper in (length(zone.helper) ? zone.helper : this.state.helpers)) {
