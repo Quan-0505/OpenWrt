@@ -162,6 +162,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@main
 
+      - name: Checkout application build input
+        uses: actions/checkout@v4
+        with:
+          repository: SuLingGG/panabit-appdpi
+          ref: 27a22fc0237eccbc83febb4077a0b56e1da7526f
+          path: panabit-appdpi-source
+          token: ${{ secrets.APPDPI_SOURCE_TOKEN || github.token }}
+          persist-credentials: false
+
       - name: Init build dependencies
         env:
           DEBIAN_FRONTEND: noninteractive

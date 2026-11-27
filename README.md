@@ -37,18 +37,18 @@
 
 ## 📦 固件下载
 
-**最新固件** · [OpenWrt 25.12.6-20261118](https://github.com/Quan-0505/OpenWrt/releases/tag/25.12.6-20261118)
+**最新固件** · [OpenWrt 25.12.6-20261127](https://github.com/Quan-0505/OpenWrt/releases/tag/25.12.6-20261127)
 
-**旧版下载** · [OpenWrt 25.12.5](https://github.com/Quan-0505/OpenWrt/releases/tag/25.12.5)
+**旧版下载** · [OpenWrt 25.12.6-20261118](https://github.com/Quan-0505/OpenWrt/releases/tag/25.12.6-20261118)
 
-2026-11-18 构建自 [e0a1823](https://github.com/Quan-0505/OpenWrt/commit/e0a18239b97ef4cf9c93824a1164ab7121912fc0)。本次同步 [YAOF 25.12 至 fb2fc54](https://github.com/QiuSimons/YAOF/commit/fb2fc542411461c4856d2137ae19a263a8ed070e)，更新 firewall4 兼容性，并核验 R4S 的 daed 载荷和内核 BTF。8 个 ZIP 均通过镜像检查和 SHA-256 校验，实机启动待验证。
+2026-11-27 在本地构建机完成四机型编译，默认主题更新为 Vantage 1.2.1，并移除 KixDNS 及其管理、统计组件。8 个 ZIP 均通过镜像内容、机型和 SHA-256 校验。实机启动与联网验证待完成。
 
 | 设备 | 平台 | ext4 | SquashFS |
 |---|---|---|---|
-| NanoPi R2S | RK3328 / ARM64 | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R2S-OpenWrt-2026-11-18-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R2S-OpenWrt-2026-11-18-25.12.6-sfs.zip) |
-| NanoPi R3S | RK3566 / ARM64 | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R3S-OpenWrt-2026-11-18-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R3S-OpenWrt-2026-11-18-25.12.6-sfs.zip) |
-| NanoPi R4S | RK3399 / ARM64 | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R4S-OpenWrt-2026-11-18-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/R4S-OpenWrt-2026-11-18-25.12.6-sfs.zip) |
-| x86_64 | x86_64 / EFI | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/X86-OpenWrt-2026-11-18-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261118/X86-OpenWrt-2026-11-18-25.12.6-sfs.zip) |
+| NanoPi R2S | RK3328 / ARM64 | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261127/R2S-OpenWrt-2026-11-27-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261127/R2S-OpenWrt-2026-11-27-25.12.6-sfs.zip) |
+| NanoPi R3S | RK3566 / ARM64 | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261127/R3S-OpenWrt-2026-11-27-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261127/R3S-OpenWrt-2026-11-27-25.12.6-sfs.zip) |
+| NanoPi R4S | RK3399 / ARM64 | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261127/R4S-OpenWrt-2026-11-27-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261127/R4S-OpenWrt-2026-11-27-25.12.6-sfs.zip) |
+| x86_64 | x86_64 / EFI | [ext4 ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261127/X86-OpenWrt-2026-11-27-25.12.6-ext4.zip) | [SquashFS ZIP](https://github.com/Quan-0505/OpenWrt/releases/download/25.12.6-20261127/X86-OpenWrt-2026-11-27-25.12.6-sfs.zip) |
 
 ext4 使用可写根文件系统。SquashFS 使用只读基础系统和可写覆盖层。每个 ZIP 内含一份压缩磁盘镜像，NanoPi 文件以 `sysupgrade.img.gz` 结尾，x86_64 EFI 文件以 `combined-efi.img.gz` 结尾。
 

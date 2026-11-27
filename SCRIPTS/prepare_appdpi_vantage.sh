@@ -13,6 +13,7 @@ if [[ "$mode" == config ]]; then
     exit 0
 fi
 source_dir="${APPDPI_SOURCE_DIR:-$(cd .. && pwd)/panabit-appdpi-source}"
+source_dir="$(realpath -m "$source_dir")"
 theme_dir="${VANTAGE_SOURCE_DIR:-$(cd .. && pwd)/vantage-source}"
 fetch_source() {
     local directory=$1 url=$2 revision=$3
@@ -47,3 +48,8 @@ sh "$source_dir/scripts/gen-cdn-data.sh" "$source_dir/openwrt/appdpi-cdn/files"
 
 mkdir -p package/base-files/files/usr/share/licenses/appdpi
 cp "$source_dir/LICENSE" package/base-files/files/usr/share/licenses/appdpi/LICENSE
+
+# Reuse this exact checkout when compiling the engine, including private sources.
+if [[ -n "${GITHUB_ENV:-}" ]]; then
+    printf 'APPDFI_SRC_DIR=%s\nAPPDFI_BUILD=%s\n' "$source_dir" 27a22fc0237eccbc83febb4077a0b56e1da7526f >> "$GITHUB_ENV"
+fi
