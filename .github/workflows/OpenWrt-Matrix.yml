@@ -312,6 +312,7 @@ jobs:
         working-directory: ${{ github.workspace }}/openwrt
         run: |
           cp -rf ../SEED/${{ env.seed }}/config.seed .config
+          bash ../SCRIPTS/prepare_appdpi_vantage.sh config
 
       - name: Convert Translation
         working-directory: ${{ github.workspace }}/openwrt

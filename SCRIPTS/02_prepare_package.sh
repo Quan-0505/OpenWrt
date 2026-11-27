@@ -310,3 +310,5 @@ sed -i 's,CONFIG_WERROR=y,# CONFIG_WERROR is not set,g' target/linux/generic/con
 ./scripts/feeds install -a
 
 #exit 0
+
+bash ../SCRIPTS/prepare_appdpi_vantage.sh prepare
