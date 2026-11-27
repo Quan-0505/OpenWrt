@@ -2,7 +2,7 @@
 
 # OpenWrt for NanoPi R2S / R3S / R4S & x86_64
 
-**OpenWrt 25.12 精简定制固件 · KixDNS + DaedNext · GitHub Actions 构建**
+**OpenWrt 25.12 精简定制固件 · DaedNext · GitHub Actions 构建**
 
 [![OpenWrt](https://img.shields.io/badge/OpenWrt-25.12-orange?style=flat-square)](https://github.com/Quan-0505/OpenWrt/releases)
 [![Branch](https://img.shields.io/badge/branch-25.12-0b5?style=flat-square)](https://github.com/Quan-0505/OpenWrt/tree/25.12)
@@ -16,7 +16,7 @@
 
 **[简体中文](./README.md)** &nbsp;|&nbsp; **[English](./README.en.md)**
 
-基于 [QiuSimons/YAOF](https://github.com/QiuSimons/YAOF) 的精简固件，面向 **NanoPi R2S / R3S / R4S 与 x86_64**，只保留 **KixDNS + DaedNext** 两条主线。
+基于 [QiuSimons/YAOF](https://github.com/QiuSimons/YAOF) 的精简固件，面向 **NanoPi R2S / R3S / R4S 与 x86_64**，集成 **DaedNext**。
 
 [固件下载](#downloads) · [快速开始](#quick-start) · [使用说明](#usage) · [自行编译](#build) · [相关项目](#related)
 
@@ -26,9 +26,9 @@
 
 ## ✨ 特性
 
-- 🧩 **只做精简**：应用层只集成 **KixDNS**（Rust DNS 分流/转发 + LuCI）与 **DaedNext**（daed Rust 内核 + 3.1.0 Web 面板），不打包 PassWall / OpenClash / MosDNS / SSRP 等整包套件。
+- 🧩 **应用管理**：集成 DaedNext 管理界面。
 - ⚙️ **内核为 dae 对齐**：内核带 eBPF 所需特性——`CONFIG_VETH`、`NET_SCH_INGRESS`（clsact）、`NET_CLS_ACT`、`NET_CLS_BPF` 与 **BTF（`/sys/kernel/btf/vmlinux`）**，R4S 构建时还会在 CI 内校验 BTF 与 web 资产。
-- 🎨 **中文主题**：Footstrap 主题 + 自译 `zh_Hans` 语言包（LuCI 界面为中文）。
+- 🎨 **默认主题**：Vantage，包含中文语言包。
 - ⚡ **YAOF 优化基础**：保留 BBRv3、LRNG、FullCone 及机型相关的 CPU/NIC 调优；Broadcom FullCone 改用 YAOF 当前的 conntrack-helper 补丁组，避免旧 nft-fullcone 与新版 firewall4 补丁冲突。
 - 🧰 **补丁跟随上游**：miniupnpd 的端口转发兼容选项按当前 packages feed 配置更新，避免对上游已包含的初始化脚本重复打补丁。
 - 🔧 **配置可追溯**：机型选包在 `SEED/`，脚本与补丁在 `SCRIPTS/`、`PATCH/`。
@@ -76,7 +76,6 @@ ext4 使用可写根文件系统。SquashFS 使用只读基础系统和可写覆
 
 ## 🧭 使用说明
 
-**KixDNS**：LuCI 菜单 → 服务 → KixDNS，用于 DNS 分流与转发，按上游文档配置规则即可。
 
 **DaedNext**：浏览器打开 `http://192.168.2.1:2023`，首次进入设置管理密码，然后在面板里添加订阅/节点并开启开关。
 - 面板由 daemon 自带（web 根目录 `/usr/share/daed/web`），**不使用 luci-app-daed**，因此 LuCI "服务" 菜单里没有 daed 入口属正常现象。
@@ -152,10 +151,8 @@ apk add some-package                             # 来自配置好的源
 - [ksong008/DaeNext](https://github.com/ksong008/DaeNext) / [ksong008/DaedNext](https://github.com/ksong008/DaedNext) — Rust 代理核心与网页控制面板。
 - [Quan-0505/rust-daed](https://github.com/Quan-0505/rust-daed) — Rust 原生 daed 独立安装包。
 - [Quan-0505/daed-kdae](https://github.com/Quan-0505/daed-kdae) — Go / kdae 版 daed 独立安装包。
-- [VizzleTF/luci-theme-footstrap](https://github.com/VizzleTF/luci-theme-footstrap) — Footstrap 主题（含本仓库自译中文包）。
-- [JohnsonRan/luci-app-kixdns](https://github.com/JohnsonRan/luci-app-kixdns) — KixDNS 的 LuCI 应用。
+- [anothaDev/luci-theme-vantage](https://github.com/anothaDev/luci-theme-vantage) — Vantage.
 - [Quan-0505/OPNsense-For-R4S](https://github.com/Quan-0505/OPNsense-For-R4S) — R4S 的 OPNsense 固件与调优记录。
-- [Quan-0505/OPNsense-kixdns-web](https://github.com/Quan-0505/OPNsense-kixdns-web) — KixDNS 的 OPNsense 集成。
 
 ## 📄 许可
 
@@ -163,4 +160,4 @@ apk add some-package                             # 来自配置好的源
 
 ## 2026-11-02 上游同步
 
-已合并 YAOF `2469d54` 的最新源码。上游新增 ImageBuilder 的 profiles/scripts 保留在仓库中；本定制分支继续使用既有源码编译流程，以保留 KixDNS、DAED 和 R2S/R3S/R4S/X86 四机型的内核及插件配置。新的构建结果以 Actions 的实际校验为准。
+已合并 YAOF `2469d54` 的最新源码。上游新增 ImageBuilder 的 profiles/scripts 保留在仓库中；本定制分支继续使用既有源码编译流程，以保留 DAED 和 R2S/R3S/R4S/X86 四机型的内核及插件配置。新的构建结果以 Actions 的实际校验为准。

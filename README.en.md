@@ -2,7 +2,7 @@
 
 # OpenWrt for NanoPi R2S / R3S / R4S & x86_64
 
-**OpenWrt 25.12 streamlined custom firmware · KixDNS + DaedNext · GitHub Actions builds**
+**OpenWrt 25.12 streamlined custom firmware · DaedNext · GitHub Actions builds**
 
 [![OpenWrt](https://img.shields.io/badge/OpenWrt-25.12-orange?style=flat-square)](https://github.com/Quan-0505/OpenWrt/releases)
 [![Branch](https://img.shields.io/badge/branch-25.12-0b5?style=flat-square)](https://github.com/Quan-0505/OpenWrt/tree/25.12)
@@ -14,7 +14,7 @@
 [![R4S](https://github.com/Quan-0505/OpenWrt/actions/workflows/R4S-OpenWrt.yml/badge.svg?branch=25.12)](https://github.com/Quan-0505/OpenWrt/actions/workflows/R4S-OpenWrt.yml)
 [![X86](https://github.com/Quan-0505/OpenWrt/actions/workflows/X86-OpenWrt.yml/badge.svg?branch=25.12)](https://github.com/Quan-0505/OpenWrt/actions/workflows/X86-OpenWrt.yml)
 
-A streamlined firmware based on [QiuSimons/YAOF](https://github.com/QiuSimons/YAOF), targeting **NanoPi R2S / R3S / R4S and x86_64**, keeping only the two main lines: **KixDNS + DaedNext**.
+A streamlined firmware based on [QiuSimons/YAOF](https://github.com/QiuSimons/YAOF), targeting **NanoPi R2S / R3S / R4S and x86_64**, with **DaedNext**.
 
 [Firmware download](#downloads) · [Quick start](#quick-start) · [Usage](#usage) · [Build it yourself](#build) · [Related projects](#related)
 
@@ -26,9 +26,9 @@ A streamlined firmware based on [QiuSimons/YAOF](https://github.com/QiuSimons/YA
 
 ## ✨ Features
 
-- 🧩 **Streamlined only**: the application layer integrates just **KixDNS** (Rust DNS routing/forwarding + LuCI) and **DaedNext** (daed Rust core + 3.1.0 web panel); full suites such as PassWall / OpenClash / MosDNS / SSRP are not packaged.
+- 🧩 **Application management**: integrated DaedNext web interface.
 - ⚙️ **Kernel aligned with dae**: the kernel carries the features eBPF requires — `CONFIG_VETH`, `NET_SCH_INGRESS` (clsact), `NET_CLS_ACT`, `NET_CLS_BPF` and **BTF (`/sys/kernel/btf/vmlinux`)**; R4S builds additionally verify BTF and the web assets inside CI.
-- 🎨 **Chinese theme**: Footstrap theme + self-translated `zh_Hans` language pack (the LuCI interface is in Chinese).
+- 🎨 **Default theme**: Vantage, including its Chinese translation.
 - ⚡ **YAOF-optimized base**: keeps BBRv3, LRNG, FullCone and device-specific CPU/NIC tuning; Broadcom FullCone now follows YAOF's current conntrack-helper patch set to avoid conflicts between the obsolete nft-fullcone patches and newer firewall4 patches.
 - 🧰 **Upstream-aligned patches**: the miniupnpd port-forwarding option now patches the current packages-feed configuration without reapplying initialization-script changes already present upstream.
 - 🔧 **Traceable configuration**: per-device package selection lives in `SEED/`, scripts and patches in `SCRIPTS/` and `PATCH/`.
@@ -76,7 +76,6 @@ ext4 uses a writable root filesystem. SquashFS uses a read-only base with a writ
 
 ## 🧭 Usage
 
-**KixDNS**: LuCI menu → Services → KixDNS, used for DNS routing and forwarding; just configure the rules following the upstream documentation.
 
 **DaedNext**: open `http://192.168.2.1:2023` in a browser, set the admin password on first entry, then add subscriptions/nodes in the panel and turn on the switch.
 - The panel ships with the daemon itself (web root `/usr/share/daed/web`), and **luci-app-daed is not used**, so it is normal that there is no daed entry in the LuCI "Services" menu.
@@ -152,10 +151,8 @@ Thanks to [QiuSimons/YAOF](https://github.com/QiuSimons/YAOF) for providing the 
 - [ksong008/DaeNext](https://github.com/ksong008/DaeNext) / [ksong008/DaedNext](https://github.com/ksong008/DaedNext) — Rust proxy core and web control panel.
 - [Quan-0505/rust-daed](https://github.com/Quan-0505/rust-daed) — standalone Rust-native daed install package.
 - [Quan-0505/daed-kdae](https://github.com/Quan-0505/daed-kdae) — standalone Go / kdae daed install package.
-- [VizzleTF/luci-theme-footstrap](https://github.com/VizzleTF/luci-theme-footstrap) — the Footstrap theme (including this repository's self-translated Chinese pack).
-- [JohnsonRan/luci-app-kixdns](https://github.com/JohnsonRan/luci-app-kixdns) — the LuCI application for KixDNS.
+- [anothaDev/luci-theme-vantage](https://github.com/anothaDev/luci-theme-vantage) — Vantage.
 - [Quan-0505/OPNsense-For-R4S](https://github.com/Quan-0505/OPNsense-For-R4S) — OPNsense firmware and tuning notes for R4S.
-- [Quan-0505/OPNsense-kixdns-web](https://github.com/Quan-0505/OPNsense-kixdns-web) — OPNsense integration for KixDNS.
 
 ## 📄 License
 

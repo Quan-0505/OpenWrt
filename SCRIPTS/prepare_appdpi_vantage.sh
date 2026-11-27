@@ -2,7 +2,10 @@
 set -euo pipefail
 mode=${1:-prepare}
 if [[ "$mode" == config ]]; then
-    sed -i '/^CONFIG_PACKAGE_luci-.*footstrap.*=/d' .config
+    sed -i '/^CONFIG_PACKAGE_luci-.*footstrap.*=/d; /kixdns/d' .config
+    for package in kixdns kixdns-stats luci-app-kixdns luci-i18n-kixdns-zh-cn; do
+        printf '# CONFIG_PACKAGE_%s is not set\n' "$package" >> .config
+    done
     for package in appdpi appdpi-rulepack appdpi-cdn appdpi-geoip-ip2region-v4 appdpi-geoip-ip2region-v6 appdpi-geoip-qqwry appdpi-geoip-zxipv6wry luci-app-appdpi luci-i18n-appdpi-zh-cn luci-theme-vantage luci-i18n-vantage-theme-zh-cn; do
         sed -i "/^CONFIG_PACKAGE_${package}=/d; /^# CONFIG_PACKAGE_${package} is not set$/d" .config
         printf 'CONFIG_PACKAGE_%s=y\n' "$package" >> .config
@@ -29,8 +32,18 @@ fi
 # The engine download must match the package definitions and bundled rulepack.
 sed -i 's/^PKG_SOURCE_VERSION:=HEAD$/PKG_SOURCE_VERSION:=27a22fc0237eccbc83febb4077a0b56e1da7526f/' "$source_dir/openwrt/appdpi/Makefile"
 test -s "$source_dir/rules/panabit.rulepack"
+# OpenWrt-Add also carries a theme checkout; avoid its older package taking precedence.
+legacy_theme=package/new/themes/luci-theme-vantage
+if [[ -d "$legacy_theme" ]]; then
+    backup="$(cd .. && pwd)/vantage-package-before-integration"
+    test ! -e "$backup"
+    mv "$legacy_theme" "$backup"
+fi
 mkdir -p package
 ln -sfn "$source_dir/openwrt" package/appdpi
 ln -sfn "$theme_dir/luci-theme-vantage" package/luci-theme-vantage
 
 sh "$source_dir/scripts/gen-cdn-data.sh" "$source_dir/openwrt/appdpi-cdn/files"
+
+mkdir -p package/base-files/files/usr/share/licenses/appdpi
+cp "$source_dir/LICENSE" package/base-files/files/usr/share/licenses/appdpi/LICENSE
